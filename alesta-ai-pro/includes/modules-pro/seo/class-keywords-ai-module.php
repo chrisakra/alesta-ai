@@ -157,9 +157,8 @@ final class KeywordsAIModule {
 		if ( ! LicenseManager::instance()->is_valid() ) {
 			return new \WP_REST_Response( [ 'error' => 'license_invalid' ], 403 );
 		}
-		$api_key = APIKeyVault::get( 'anthropic' );
-		if ( ! $api_key ) {
-			return new \WP_REST_Response( [ 'error' => 'no_api_key' ], 400 );
+		if ( ! APIKeyVault::has( 'anthropic' ) ) {
+			return new \WP_REST_Response( [ 'error' => 'no_api_key', 'message' => 'Configurez votre clé Anthropic dans Alesta AI → Réglages.' ], 400 );
 		}
 
 		// 2. Rate limit (anti-abuse user qui clique 50x/min)
@@ -168,26 +167,60 @@ final class KeywordsAIModule {
 			return new \WP_REST_Response( [ 'error' => 'rate_limited', 'message' => '30 générations/heure max' ], 429 );
 		}
 
-		// 3. Récupère le provider Claude (Pro fournit, Free n'a rien)
-		$providers = ExtensionsAPI::get_ai_providers();
-		$claude = $providers['claude'] ?? null;
+		// 3. Récupère contexte (post_id, titre, contenu si disponible)
+		$context = $request->get_param( 'context' ) ?? [];
+		$post_id = isset( $context['post_id'] ) ? (int) $context['post_id'] : 0;
+		$site_url = home_url();
+		$site_name = get_bloginfo( 'name' );
 
-		if ( ! $claude ) {
-			// Pour la phase pilote, on simule juste le retour
-			return new \WP_REST_Response( [
-				'keywords' => [
-					'(stub) hébergement web français',
-					'(stub) WordPress sécurisé',
-					'(stub) sauvegarde automatique',
-				],
-				'_stub' => 'ClaudeProvider pas encore migré depuis class-api.php — remplacera ce stub.',
-			], 200 );
+		// Récupère contenu du post si fourni, sinon utilise homepage
+		$content_excerpt = '';
+		if ( $post_id > 0 ) {
+			$post = get_post( $post_id );
+			if ( $post ) {
+				$content_excerpt = wp_strip_all_tags( wp_trim_words( $post->post_content, 200 ) );
+				$site_name = $post->post_title . ' (' . $site_name . ')';
+			}
+		}
+		if ( empty( $content_excerpt ) ) {
+			$content_excerpt = wp_strip_all_tags( get_bloginfo( 'description' ) );
 		}
 
-		// 4. Vrai appel Claude — TODO Phase S3 (migration class-api.php → ClaudeProvider)
-		// $result = $claude->complete( "Suggère 10 keywords SEO pour : ..." );
-		// return new WP_REST_Response( [ 'keywords' => $result ], 200 );
+		// 4. Appel Claude via le provider
+		$providers = ExtensionsAPI::get_ai_providers();
+		$claude = $providers['claude'] ?? null;
+		if ( ! $claude ) {
+			return new \WP_REST_Response( [ 'error' => 'no_provider', 'message' => 'Provider Claude indisponible' ], 500 );
+		}
 
-		return new \WP_REST_Response( [ 'keywords' => [] ], 200 );
+		$prompt = sprintf(
+			"Je gère le site WordPress \"%s\" (%s). Voici un extrait de son contenu :\n\n%s\n\nGénère 10 keywords SEO pertinents en français pour ce contenu. Mix mots-clés génériques (recherche large) et long-tail (3-5 mots, intention claire). Privilégie ceux avec bon potentiel de positionnement (volume modéré, concurrence raisonnable).\n\nRetourne UNIQUEMENT un JSON de cette forme exacte :\n{\"keywords\": [\"keyword 1\", \"keyword 2\", ...]}",
+			$site_name,
+			$site_url,
+			substr( $content_excerpt, 0, 1500 ),
+		);
+
+		$result = $claude->complete_json( $prompt, [
+			'max_tokens'  => 600,
+			'temperature' => 0.5,
+			'cache_key'   => "keywords_${post_id}_" . md5( $content_excerpt ),
+		] );
+
+		if ( is_wp_error( $result ) ) {
+			return new \WP_REST_Response( [
+				'error' => $result->get_error_code(),
+				'message' => $result->get_error_message(),
+			], 500 );
+		}
+
+		$keywords = $result['keywords'] ?? [];
+		if ( ! is_array( $keywords ) ) {
+			return new \WP_REST_Response( [ 'error' => 'invalid_response', 'message' => 'Réponse Claude mal formée' ], 500 );
+		}
+
+		return new \WP_REST_Response( [
+			'keywords' => array_slice( array_map( 'strval', $keywords ), 0, 10 ),
+			'context'  => [ 'post_id' => $post_id, 'site' => $site_name ],
+		], 200 );
 	}
 }

@@ -3,7 +3,7 @@
  * Plugin Name:       Alesta AI Pro
  * Plugin URI:        https://www.alesta-ai.com/pro
  * Description:       Premium AI features for Alesta AI — Claude-powered content generation, SEO automation, image AI and more. Requires Alesta AI (free).
- * Version:           2.0.1
+ * Version:           2.0.2
  * Requires at least: 6.5
  * Requires PHP:      7.4
  * Requires Plugins:  alesta-ai
@@ -41,7 +41,7 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_PRO_VERSION', '2.0.1' );
+define( 'ALESTA_AI_PRO_VERSION', '2.0.2' );
 define( 'ALESTA_AI_PRO_FILE',    __FILE__ );
 define( 'ALESTA_AI_PRO_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'ALESTA_AI_PRO_URL',     plugin_dir_url( __FILE__ ) );
@@ -121,9 +121,8 @@ add_action( 'alesta_ai/loaded', function () {
 	//    BYOK : le ClaudeProvider lit la clé Anthropic du user depuis le Vault
 	//    Free (APIKeyVault::get('anthropic')), pas une clé hébergée Alesta.
 	add_filter( 'alesta_ai/ai/providers', function ( $providers ) {
-		// require_once ALESTA_AI_PRO_DIR . 'includes/providers/class-claude-provider.php';
-		// $providers['claude'] = new \AlestaAIPro\Providers\ClaudeProvider();
-		// TODO: réactiver quand la classe ClaudeProvider sera migrée depuis class-api.php
+		require_once ALESTA_AI_PRO_DIR . 'includes/providers/class-claude-provider.php';
+		$providers['claude'] = new \AlestaAIPro\Providers\ClaudeProvider();
 		return $providers;
 	} );
 
