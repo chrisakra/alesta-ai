@@ -1,0 +1,115 @@
+# =============================================================================
+# Alesta AI v2.0 — Release workflow
+# =============================================================================
+#
+# Trigger : push d'un tag "v2.X.Y" (ex: v2.0.0, v2.0.1)
+#
+# Actions :
+#   1. Build alesta-ai-X.Y.Z.zip (Free) et alesta-ai-pro-X.Y.Z.zip (Pro)
+#   2. Crée une GitHub Release avec les 2 ZIPs en assets
+#   3. (optionnel) Upload du Pro sur Azure Blob alesta-releases
+#
+# La GitHub Release est notre fallback en attendant qu'Azure Blob soit configuré :
+# https://github.com/{org}/alesta-ai/releases/download/v2.0.0/alesta-ai-pro-2.0.0.zip
+#
+# Côté Galiance Cockpit, l'endpoint /api/alesta-ai-pro/download/[version] peut
+# proxifier depuis cette URL si AZURE_RELEASES_BASE_URL n'est pas défini.
+#
+# Usage manuel pour release v2.0.0 :
+#   git tag v2.0.0
+#   git push origin v2.0.0
+
+name: Release Alesta AI v2.x
+
+on:
+  push:
+    tags:
+      - 'v2.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (ex: 2.0.0)'
+        required: true
+
+permissions:
+  contents: write  # nécessaire pour créer la GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Détermine la version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Install zip
+        run: sudo apt-get install -y zip
+
+      - name: Build ZIPs
+        run: |
+          mkdir -p dist
+          # Free ZIP
+          (cd alesta-ai && zip -r9 "../dist/alesta-ai-${{ steps.version.outputs.version }}.zip" . \
+            -x "*.DS_Store" "*.git*" "node_modules/*" "tests/*" > /dev/null)
+          # Pro ZIP
+          (cd alesta-ai-pro && zip -r9 "../dist/alesta-ai-pro-${{ steps.version.outputs.version }}.zip" . \
+            -x "*.DS_Store" "*.git*" "node_modules/*" "tests/*" > /dev/null)
+          ls -lh dist/
+
+      - name: Crée la GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Alesta AI v${{ steps.version.outputs.version }}
+          body: |
+            ## Alesta AI v${{ steps.version.outputs.version }}
+
+            ### Free (wp.org compatible)
+            `alesta-ai-${{ steps.version.outputs.version }}.zip`
+            → Soumettre à wp.org via SVN
+
+            ### Pro (Galiance distribution)
+            `alesta-ai-pro-${{ steps.version.outputs.version }}.zip`
+            → Téléchargeable via Galiance Cockpit après achat :
+            `https://app.galiance.fr/api/alesta-ai-pro/download/${{ steps.version.outputs.version }}?license=aap_live_xxx`
+
+            Architecture complète : [alesta-ai-architecture-v2.html](https://www.alesta-ai.com/architecture)
+          files: |
+            dist/alesta-ai-${{ steps.version.outputs.version }}.zip
+            dist/alesta-ai-pro-${{ steps.version.outputs.version }}.zip
+          draft: false
+          prerelease: false
+
+      # =============================================================================
+      # Optionnel : upload Azure (si secrets configurés)
+      # =============================================================================
+      - name: Upload Azure Blob (si AZURE_STORAGE_KEY défini)
+        if: env.AZURE_STORAGE_KEY != ''
+        env:
+          AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+          AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+        run: |
+          # Upload Pro versionné + alias "latest"
+          az storage blob upload \
+            --account-name "$AZURE_STORAGE_ACCOUNT" \
+            --account-key "$AZURE_STORAGE_KEY" \
+            --container-name alesta-releases \
+            --name "alesta-ai-pro/${{ steps.version.outputs.version }}.zip" \
+            --file "dist/alesta-ai-pro-${{ steps.version.outputs.version }}.zip" \
+            --overwrite
+          az storage blob upload \
+            --account-name "$AZURE_STORAGE_ACCOUNT" \
+            --account-key "$AZURE_STORAGE_KEY" \
+            --container-name alesta-releases \
+            --name "alesta-ai-pro/latest.zip" \
+            --file "dist/alesta-ai-pro-${{ steps.version.outputs.version }}.zip" \
+            --overwrite
