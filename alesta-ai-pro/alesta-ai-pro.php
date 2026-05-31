@@ -1,9 +1,9 @@
 <?php
 /**
  * Plugin Name:       Alesta AI Pro
- * Plugin URI:        https://www.alesta-computer.com/alesta-ai-pro
+ * Plugin URI:        https://www.alesta-ai.com/pro
  * Description:       Premium AI features for Alesta AI — Claude-powered content generation, SEO automation, image AI and more. Requires Alesta AI (free).
- * Version:           2.0.0
+ * Version:           2.0.1
  * Requires at least: 6.5
  * Requires PHP:      7.4
  * Requires Plugins:  alesta-ai
@@ -41,7 +41,7 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_PRO_VERSION', '2.0.0' );
+define( 'ALESTA_AI_PRO_VERSION', '2.0.1' );
 define( 'ALESTA_AI_PRO_FILE',    __FILE__ );
 define( 'ALESTA_AI_PRO_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'ALESTA_AI_PRO_URL',     plugin_dir_url( __FILE__ ) );
@@ -171,8 +171,75 @@ add_action( 'alesta_ai/loaded', function () {
 		'description' => 'TL;DR auto en début de post long, cacheé en post_meta',
 	] );
 
-	// TODO Phase S3 : 11 autres modules Pro (ai-metadata, llms-txt, duplicates, chatbot,
-	// comments, editorial, templates, tags, translation, filenames-ai, pdf-report)
+	// SEO additionnels (3)
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/seo/class-ai-metadata-module.php';
+	$registry->register_pro( 'seo/ai-metadata', \AlestaAIPro\Modules\Seo\AiMetadataModule::class, [
+		'name' => 'AI Metadata', 'category' => 'seo', 'icon' => 'admin-customizer',
+		'description' => 'OG, Twitter Cards, schema.org, alt text via Claude',
+	] );
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/seo/class-duplicates-ai-module.php';
+	$registry->register_pro( 'seo/duplicates', \AlestaAIPro\Modules\Seo\DuplicatesAIModule::class, [
+		'name' => 'Détection duplicates SEO', 'category' => 'seo', 'icon' => 'admin-page',
+		'description' => 'Détection IA contenus similaires + suggestions canonical/merge',
+	] );
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/seo/class-llms-txt-ai-module.php';
+	$registry->register_pro( 'seo/llms-txt', \AlestaAIPro\Modules\Seo\LlmsTxtAIModule::class, [
+		'name' => 'LLMs.txt AI', 'category' => 'seo', 'icon' => 'text',
+		'description' => 'llms.txt enrichi par Claude (descriptions + hiérarchie pages)',
+	] );
+
+	// CONTENT additionnels (5)
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/content/class-editorial-module.php';
+	$registry->register_pro( 'content/editorial', \AlestaAIPro\Modules\Content\EditorialModule::class, [
+		'name' => 'Calendrier éditorial', 'category' => 'content', 'icon' => 'calendar-alt',
+		'description' => 'Idées d\'articles IA basées sur tendances + gaps SEO',
+	] );
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/content/class-chatbot-module.php';
+	$registry->register_pro( 'content/chatbot', \AlestaAIPro\Modules\Content\ChatbotModule::class, [
+		'name' => 'Chatbot Claude', 'category' => 'content', 'icon' => 'format-chat',
+		'description' => 'Widget chatbot frontend qui répond aux visiteurs',
+	] );
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/content/class-comments-module.php';
+	$registry->register_pro( 'content/comments', \AlestaAIPro\Modules\Content\CommentsModule::class, [
+		'name' => 'Modération commentaires', 'category' => 'content', 'icon' => 'admin-comments',
+		'description' => 'Filtre spam/toxic + suggestions de réponse via Claude',
+	] );
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/content/class-tags-module.php';
+	$registry->register_pro( 'content/tags', \AlestaAIPro\Modules\Content\TagsModule::class, [
+		'name' => 'Tags AI suggestions', 'category' => 'content', 'icon' => 'tag',
+		'description' => 'Suggère les meilleurs tags WordPress par post via Claude',
+	] );
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/content/class-translation-module.php';
+	$registry->register_pro( 'content/translation', \AlestaAIPro\Modules\Content\TranslationModule::class, [
+		'name' => 'Traduction 20 langues', 'category' => 'content', 'icon' => 'translation',
+		'description' => 'Traduction automatique posts/pages via Claude',
+	] );
+
+	// MEDIA (1 module SPLIT — couche IA)
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/media/class-filenames-ai-module.php';
+	$registry->register_pro( 'media/filenames-ai', \AlestaAIPro\Modules\Media\FilenamesAIModule::class, [
+		'name' => 'Filenames AI', 'category' => 'media', 'icon' => 'format-image',
+		'description' => 'Suggère 3 noms SEO par image via Claude vision',
+	] );
+
+	// PERFORMANCE (2 modules SPLIT — couches IA)
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/performance/class-redirects-ai-module.php';
+	$registry->register_pro( 'performance/redirects-ai', \AlestaAIPro\Modules\Performance\RedirectsAIModule::class, [
+		'name' => 'Redirections IA', 'category' => 'performance', 'icon' => 'redo',
+		'description' => 'Suggère redirect 301 cible quand 404 détecté',
+	] );
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/performance/class-perf-audit-ai-module.php';
+	$registry->register_pro( 'performance/perf-audit-ai', \AlestaAIPro\Modules\Performance\PerfAuditAIModule::class, [
+		'name' => 'Audit perf priorisé IA', 'category' => 'performance', 'icon' => 'performance',
+		'description' => 'Top 3 actions à plus fort impact via Claude',
+	] );
+
+	// REPORTS (1)
+	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/reports/class-pdf-report-module.php';
+	$registry->register_pro( 'reports/pdf', \AlestaAIPro\Modules\Reports\PdfReportModule::class, [
+		'name' => 'Rapports PDF mensuels', 'category' => 'reports', 'icon' => 'pdf',
+		'description' => 'PDF mensuel SEO/perf/sécu + synthèse exécutive IA',
+	] );
 
 	// 5. Injection UI dans les modules SPLIT du Free.
 	//    Exemple — bouton "✨ Suggérer keywords IA" injecté sous le tableau Free de keywords :
