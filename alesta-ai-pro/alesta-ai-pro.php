@@ -3,7 +3,7 @@
  * Plugin Name:       Alesta AI Pro
  * Plugin URI:        https://www.alesta-ai.com/pro
  * Description:       Premium AI features for Alesta AI — Claude-powered content generation, SEO automation, image AI and more. Requires Alesta AI (free).
- * Version:           2.0.2
+ * Version:           2.0.3
  * Requires at least: 6.5
  * Requires PHP:      7.4
  * Requires Plugins:  alesta-ai
@@ -41,7 +41,7 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_PRO_VERSION', '2.0.2' );
+define( 'ALESTA_AI_PRO_VERSION', '2.0.3' );
 define( 'ALESTA_AI_PRO_FILE',    __FILE__ );
 define( 'ALESTA_AI_PRO_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'ALESTA_AI_PRO_URL',     plugin_dir_url( __FILE__ ) );
@@ -107,6 +107,17 @@ spl_autoload_register( function ( $class ) {
 // ou de race condition au boot WP).
 
 add_action( 'alesta_ai/loaded', function () {
+	// 0. GlitchTip Reporter (opt-in via constante ALESTA_GLITCHTIP_DSN dans wp-config).
+	//    Désactivé par défaut. Envoie les fatals/exceptions PHP du plugin au
+	//    serveur GlitchTip de Galiance pour monitoring centralisé.
+	//    Injecté automatiquement par Galiance worker sur les sites hébergés.
+	if ( class_exists( '\\AlestaAIPro\\ErrorReporter\\GlitchTipReporter' ) ) {
+		$reporter = \AlestaAIPro\ErrorReporter\GlitchTipReporter::instance();
+		if ( $reporter ) {
+			$reporter->init();
+		}
+	}
+
 	// 1. Init License Manager + Update Checker (consommateurs des endpoints Galiance)
 	//    LicenseManager check toutes les 12h /api/license/verify
 	//    UpdateChecker check toutes les 12h /api/alesta-ai-pro/latest
