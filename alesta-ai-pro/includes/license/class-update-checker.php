@@ -76,7 +76,7 @@ final class UpdateChecker {
 			'slug'         => 'alesta-ai-pro',
 			'plugin'       => $basename,
 			'new_version'  => $release['version'],
-			'url'          => 'https://www.alesta-ai.com/pro',
+			'url'          => 'https://www.alesta-ai.com/tarifs.html',
 			'package'      => $release['download_url'], // license sera injectée par hook 3
 			'tested'       => $release['wp_tested'] ?? '',
 			'requires'     => $release['wp_required'] ?? '6.0',
@@ -108,7 +108,7 @@ final class UpdateChecker {
 			'slug'          => 'alesta-ai-pro',
 			'version'       => $release['version'],
 			'author'        => '<a href="https://www.alesta-ai.com">Alesta Computer</a>',
-			'homepage'      => 'https://www.alesta-ai.com/pro',
+			'homepage'      => 'https://www.alesta-ai.com/tarifs.html',
 			'requires'      => $release['wp_required'] ?? '6.0',
 			'tested'        => $release['wp_tested'] ?? '',
 			'requires_php'  => $release['php_required'] ?? '7.4',
