@@ -27,6 +27,13 @@ defined( 'ABSPATH' ) || exit;
 
 final class KeywordsAIModule {
 
+	/**
+	 * Handle commun pour les assets (CSS + JS) du module.
+	 * v2.0.4 : extraction des styles/scripts inline vers /assets/ pour
+	 * conformité best practices WP (wp_enqueue_*).
+	 */
+	private const ASSET_HANDLE = 'alesta-ai-pro-keywords';
+
 	public function __construct() {
 		// Injection UI : ajoute le bouton "Suggérer via IA" dans la page admin
 		// d'un module Free (ex. sitemap, posts editor metabox SEO, etc.)
@@ -37,6 +44,11 @@ final class KeywordsAIModule {
 
 		// Déclare cette feature dans la page "Découvrir Pro" du Free
 		add_filter( 'alesta_ai/pro/features', [ $this, 'declare_feature' ] );
+
+		// v2.0.4 : enregistre les assets une fois côté admin. L'enqueue effectif
+		// est déclenché à la volée par render_inject_button() (seulement quand
+		// le bouton est réellement rendu, pour 0 impact sur les autres pages).
+		add_action( 'admin_enqueue_scripts', [ $this, 'register_assets' ] );
 	}
 
 	// =========================================================================
@@ -54,6 +66,35 @@ final class KeywordsAIModule {
 	}
 
 	// =========================================================================
+	// ASSETS (v2.0.4 — extraction des inline <script>/<style> vers /assets/)
+	// =========================================================================
+
+	/**
+	 * Enregistre (sans enqueue) le CSS et le JS du module.
+	 * L'enqueue conditionnel est fait par render_inject_button().
+	 *
+	 * @return void
+	 */
+	public function register_assets(): void {
+		$version = defined( 'ALESTA_AI_PRO_VERSION' ) ? ALESTA_AI_PRO_VERSION : false;
+
+		wp_register_style(
+			self::ASSET_HANDLE,
+			ALESTA_AI_PRO_URL . 'assets/css/keywords-ai.css',
+			[],
+			$version
+		);
+
+		wp_register_script(
+			self::ASSET_HANDLE,
+			ALESTA_AI_PRO_URL . 'assets/js/keywords-ai.js',
+			[],
+			$version,
+			true
+		);
+	}
+
+	// =========================================================================
 	// INJECTION UI dans la page sitemap Free
 	// =========================================================================
 
@@ -68,27 +109,52 @@ final class KeywordsAIModule {
 		$key_ok     = APIKeyVault::has( 'anthropic' );
 
 		if ( ! $license_ok ) {
-			echo '<p style="margin-top:16px;color:#a00;">';
+			echo '<p class="alesta-ai-keywords-notice">';
 			echo '<strong>Pro:</strong> Suggestion keywords IA nécessite une licence active. ';
 			echo '<a href="' . esc_url( admin_url( 'admin.php?page=alesta-ai-license' ) ) . '">Vérifier ma licence</a>';
 			echo '</p>';
+			// On enqueue quand même le CSS pour la notice (mais pas le JS — inutile sans bouton).
+			wp_enqueue_style( self::ASSET_HANDLE );
 			return;
 		}
 
 		if ( ! $key_ok ) {
-			echo '<p style="margin-top:16px;color:#a00;">';
+			echo '<p class="alesta-ai-keywords-notice">';
 			echo '<strong>Pro:</strong> Configurez votre clé Anthropic dans ';
 			echo '<a href="' . esc_url( admin_url( 'admin.php?page=alesta-ai-settings' ) ) . '">les réglages</a> ';
 			echo 'pour utiliser les fonctionnalités IA. ';
 			echo '<small>(BYOK — vous payez Anthropic directement selon votre usage)</small>';
 			echo '</p>';
+			wp_enqueue_style( self::ASSET_HANDLE );
 			return;
 		}
 
-		// Tout OK : on rend le bouton
+		// v2.0.4 : injection des variables PHP -> JS via wp_localize_script
+		// (remplace l'ancienne interpolation inline rest_url()/wp_create_nonce()).
+		// On utilise le nonce REST standard 'wp_rest' attendu par l'API REST WP.
+		wp_localize_script(
+			self::ASSET_HANDLE,
+			'AlestaAIKeywords',
+			[
+				'restUrl' => esc_url_raw( rest_url( 'alesta-ai-pro/v1/keywords/generate' ) ),
+				'nonce'   => wp_create_nonce( 'wp_rest' ),
+				'i18n'    => [
+					'generating'    => '⟳ Génération en cours...',
+					'suggested'     => 'Keywords suggérés :',
+					'generic_error' => 'Erreur lors de la génération',
+					'network_error' => 'Erreur réseau :',
+					'button_label'  => '✨ Suggérer keywords IA',
+				],
+			]
+		);
+		wp_enqueue_style( self::ASSET_HANDLE );
+		wp_enqueue_script( self::ASSET_HANDLE );
+
+		// Tout OK : on rend le bouton (markup sans style inline).
+		// Le data-context est sérialisé en JSON puis échappé via esc_attr().
 		?>
-		<div style="margin-top:24px;padding:20px;background:#f3f0ff;border-left:4px solid #8b5cf6;border-radius:4px;">
-			<p style="margin:0 0 12px 0;">
+		<div class="alesta-ai-keywords-panel">
+			<p class="alesta-ai-keywords-panel__title">
 				<strong>✨ Alesta AI Pro</strong> — Suggérer des keywords pour les URLs de votre sitemap
 			</p>
 			<button
@@ -96,45 +162,11 @@ final class KeywordsAIModule {
 				class="button button-primary"
 				id="alesta-ai-keywords-generate"
 				data-context="<?php echo esc_attr( wp_json_encode( $context ) ); ?>"
-				data-nonce="<?php echo esc_attr( wp_create_nonce( 'alesta_ai_keywords' ) ); ?>"
 			>
 				✨ Suggérer keywords IA
 			</button>
-			<div id="alesta-ai-keywords-result" style="margin-top:16px;"></div>
+			<div id="alesta-ai-keywords-result" class="alesta-ai-keywords-panel__result"></div>
 		</div>
-		<script>
-		(function() {
-			const btn = document.getElementById('alesta-ai-keywords-generate');
-			if (!btn) return;
-			btn.addEventListener('click', async () => {
-				btn.disabled = true;
-				btn.textContent = '⟳ Génération en cours...';
-				const result = document.getElementById('alesta-ai-keywords-result');
-				try {
-					const res = await fetch('<?php echo esc_url_raw( rest_url( 'alesta-ai-pro/v1/keywords/generate' ) ); ?>', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-							'X-WP-Nonce': btn.dataset.nonce,
-						},
-						body: JSON.stringify({ context: JSON.parse(btn.dataset.context) }),
-					});
-					const data = await res.json();
-					if (data.keywords && data.keywords.length) {
-						result.innerHTML = '<p><strong>Keywords suggérés :</strong></p><ul style="margin:0;padding-left:20px;">' +
-							data.keywords.map(k => '<li>' + k + '</li>').join('') + '</ul>';
-					} else {
-						result.innerHTML = '<p style="color:#a00;">' + (data.message || 'Erreur lors de la génération') + '</p>';
-					}
-				} catch (err) {
-					result.innerHTML = '<p style="color:#a00;">Erreur réseau : ' + err.message + '</p>';
-				} finally {
-					btn.disabled = false;
-					btn.textContent = '✨ Suggérer keywords IA';
-				}
-			});
-		})();
-		</script>
 		<?php
 	}
 
