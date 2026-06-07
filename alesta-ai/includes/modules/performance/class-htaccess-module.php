@@ -3,11 +3,20 @@ defined('ABSPATH') || exit;
 
 class Alesta_AI_Htaccess_Module {
 
-    const BACKUP_KEY = 'alesta_htaccess_backup';
+    const BACKUP_KEY      = 'alesta_htaccess_backup';
     const BACKUP_DATE_KEY = 'alesta_htaccess_backup_date';
-    // The .htaccess file is by definition located at the WordPress root.
-    // ABSPATH is the only correct anchor — used by WP core too (see misc.php).
-    const HTACCESS = ABSPATH . '.htaccess';
+
+    /**
+     * Returns the absolute path to .htaccess at the WordPress root.
+     * Uses get_home_path() (the official WP helper) instead of ABSPATH directly.
+     * Requires wp-admin/includes/file.php for get_home_path().
+     */
+    private static function htaccess_path(): string {
+        if ( ! function_exists( 'get_home_path' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
+        }
+        return get_home_path() . '.htaccess';
+    }
 
     public function __construct() {
         add_action('wp_ajax_alesta_htaccess_read',          [$this, 'ajax_read']);
@@ -32,34 +41,34 @@ class Alesta_AI_Htaccess_Module {
             // Loading a WP core admin include — ABSPATH . 'wp-admin/includes/'
             // is the documented way to reach WP_Filesystem(). WordPress core
             // itself uses this exact idiom.
-            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
             WP_Filesystem();
         }
-        return $wp_filesystem->exists( self::HTACCESS ) && $wp_filesystem->is_writable( self::HTACCESS );
+        return $wp_filesystem->exists( self::htaccess_path() ) && $wp_filesystem->is_writable( self::htaccess_path() );
     }
 
     private function is_active(string $marker): bool {
-        if (!file_exists(self::HTACCESS)) return false;
-        $lines = extract_from_markers(self::HTACCESS, $marker);
+        if (!file_exists(self::htaccess_path())) return false;
+        $lines = extract_from_markers(self::htaccess_path(), $marker);
         return !empty(array_filter($lines));
     }
 
     private function make_backup(): void {
-        if (!file_exists(self::HTACCESS)) return;
+        if (!file_exists(self::htaccess_path())) return;
         // Direct file_get_contents() on .htaccess at the WP root — WP_Filesystem
         // requires FTP creds in non-direct setups, which we cannot prompt for
         // from an AJAX handler. Plain read of a known root file.
-        $content = file_get_contents(self::HTACCESS); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+        $content = file_get_contents(self::htaccess_path()); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
         update_option(self::BACKUP_KEY, $content);
         update_option(self::BACKUP_DATE_KEY, current_time('mysql'));
     }
 
     private function read_htaccess(): string {
-        if (!file_exists(self::HTACCESS)) return '';
+        if (!file_exists(self::htaccess_path())) return '';
         // Same rationale as make_backup() above — read-only access to the
         // WP-root .htaccess file. WordPress core uses the same pattern in
         // wp-admin/includes/misc.php (got_url_rewrite_module()).
-        return file_get_contents(self::HTACCESS); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+        return file_get_contents(self::htaccess_path()); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
     }
 
     // =========================================================================
@@ -144,8 +153,8 @@ class Alesta_AI_Htaccess_Module {
 
         wp_send_json_success([
             'can_write'    => $this->can_write(),
-            'exists'       => file_exists(self::HTACCESS),
-            'size'         => file_exists(self::HTACCESS) ? filesize(self::HTACCESS) : 0,
+            'exists'       => file_exists(self::htaccess_path()),
+            'size'         => file_exists(self::htaccess_path()) ? filesize(self::htaccess_path()) : 0,
             'cache_active' => $this->is_active('Alesta AI - Cache navigateur'),
             'gzip_active'  => $this->is_active('Alesta AI - Compression GZIP'),
             'https_active' => $this->is_active('Alesta AI - HTTPS'),
@@ -180,7 +189,7 @@ class Alesta_AI_Htaccess_Module {
         ];
 
         $this->make_backup();
-        $result = insert_with_markers(self::HTACCESS, 'Alesta AI - Cache navigateur', $this->rules_cache($opts));
+        $result = insert_with_markers(self::htaccess_path(), 'Alesta AI - Cache navigateur', $this->rules_cache($opts));
 
         if (!$result) wp_send_json_error(['message' => 'Échec de l\'écriture dans .htaccess']);
         wp_send_json_success(['message' => 'Cache navigateur active avec succes']);
@@ -198,7 +207,7 @@ class Alesta_AI_Htaccess_Module {
         }
 
         $this->make_backup();
-        $result = insert_with_markers(self::HTACCESS, 'Alesta AI - Compression GZIP', $this->rules_gzip());
+        $result = insert_with_markers(self::htaccess_path(), 'Alesta AI - Compression GZIP', $this->rules_gzip());
 
         if (!$result) wp_send_json_error(['message' => 'Échec de l\'écriture dans .htaccess']);
         wp_send_json_success(['message' => 'Compression GZIP activee avec succes']);
@@ -216,7 +225,7 @@ class Alesta_AI_Htaccess_Module {
         }
 
         $this->make_backup();
-        $result = insert_with_markers(self::HTACCESS, 'Alesta AI - HTTPS', $this->rules_https());
+        $result = insert_with_markers(self::htaccess_path(), 'Alesta AI - HTTPS', $this->rules_https());
 
         if (!$result) wp_send_json_error(['message' => 'Échec de l\'écriture dans .htaccess']);
         wp_send_json_success(['message' => 'Redirection HTTPS activee avec succes']);
@@ -245,7 +254,7 @@ class Alesta_AI_Htaccess_Module {
 
         $this->make_backup();
         // Passer un tableau vide supprime le bloc mais garde les balises vides
-        insert_with_markers(self::HTACCESS, $marker, []);
+        insert_with_markers(self::htaccess_path(), $marker, []);
         wp_send_json_success(['message' => 'Regle supprimee du .htaccess']);
     }
 
@@ -282,7 +291,7 @@ class Alesta_AI_Htaccess_Module {
         // Restore: write the previously backed-up .htaccess back to its
         // canonical root location. can_write() above already verified that
         // we have write access — no WP_Filesystem indirection needed.
-        file_put_contents(self::HTACCESS, $backup); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents
+        file_put_contents(self::htaccess_path(), $backup); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents
         wp_send_json_success(['message' => 'Sauvegarde restauree avec succes']);
     }
 
@@ -327,14 +336,14 @@ class Alesta_AI_Htaccess_Module {
         check_ajax_referer('alesta_ai_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Accès refusé.');
 
-        $remove = !empty($_POST['remove']);
+        $remove = !empty(wp_unslash($_POST['remove'] ?? ''));
         $marker = 'Alesta-WWW';
 
         if ($remove) {
-            $result = insert_with_markers(self::HTACCESS, $marker, []);
+            $result = insert_with_markers(self::htaccess_path(), $marker, []);
         } else {
             $this->make_backup();
-            $result = insert_with_markers(self::HTACCESS, $marker, $this->rules_www());
+            $result = insert_with_markers(self::htaccess_path(), $marker, $this->rules_www());
         }
 
         if (!$result) wp_send_json_error('Impossible d\'écrire dans .htaccess.');

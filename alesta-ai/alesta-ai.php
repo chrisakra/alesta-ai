@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Alesta AI
  * Description:       All-in-one WordPress toolkit: XML sitemap, .htaccess cache/GZIP, robots.txt, broken-link scanner, GDPR banner, maintenance mode, and more.
- * Version:           1.2.4
+ * Version:           1.2.5
  * Author:            Christian EL DEBS (Alesta Computer)
  * Author URI:        https://www.alesta-computer.com
  * License:           GPL v2 or later
@@ -44,7 +44,7 @@ if ( defined('ALESTA_AI_DIR') ) {
     return; // Stoppe le chargement de cette instance.
 }
 
-define('ALESTA_AI_VERSION', '1.2.3');
+define('ALESTA_AI_VERSION', '1.2.5');
 define('ALESTA_AI_DIR',     plugin_dir_path(__FILE__));
 define('ALESTA_AI_URL',     plugin_dir_url(__FILE__));
 

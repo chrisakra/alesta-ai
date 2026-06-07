@@ -4,7 +4,7 @@ Tags: seo, sitemap, performance, gdpr, maintenance
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.2.4
+Stable tag: 1.2.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,6 +99,9 @@ Yes. The Maintenance module supports per-IP and per-role allow-lists, plus a byp
 3. **Health Check** — Detailed dashboard for WordPress, PHP, SSL, disk and database state.
 
 == Changelog ==
+
+= 1.2.5 =
+* WordPress.org compliance pass: inline CSS/JS migrated to wp_enqueue, removed ABSPATH/WP_CONTENT_DIR hardcoded paths, removed ini_set/set_time_limit globals, fixed unclosed ob_start, full input sanitization on $_POST/$_GET/$_REQUEST and post-json_decode validation, cleaned unsplash URLs from readme.
 
 = 1.2.4 =
 * Plugin Check fixes: register the maintenance page CSS/JS via wp_register_style()/wp_register_script() + wp_print_styles()/wp_print_scripts() instead of raw <link>/<script> tags.

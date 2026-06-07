@@ -35,16 +35,16 @@ class Alesta_AI_Maintenance_Module {
         $s['bg_image_url'] = esc_url_raw( wp_unslash( $_POST['bg_image_url']        ?? '' ) );
         $s['text_color']   = sanitize_hex_color( wp_unslash( $_POST['text_color']   ?? '#ffffff' ) ) ?: '#ffffff';
         $s['accent_color'] = sanitize_hex_color( wp_unslash( $_POST['accent_color'] ?? '#3b82f6' ) ) ?: '#3b82f6';
-        $s['countdown_enabled'] = ! empty($_POST['countdown_enabled']);
+        $s['countdown_enabled'] = ! empty( wp_unslash( $_POST['countdown_enabled'] ?? '' ) );
         $s['countdown_date']    = sanitize_text_field( wp_unslash( $_POST['countdown_date'] ?? '' ) );
         $s['social_twitter']    = esc_url_raw( wp_unslash( $_POST['social_twitter']  ?? '' ) );
         $s['social_facebook']   = esc_url_raw( wp_unslash( $_POST['social_facebook'] ?? '' ) );
         $s['social_instagram']  = esc_url_raw( wp_unslash( $_POST['social_instagram'] ?? '' ) );
         $s['social_linkedin']   = esc_url_raw( wp_unslash( $_POST['social_linkedin'] ?? '' ) );
         $s['allowed_ips']       = sanitize_textarea_field( wp_unslash( $_POST['allowed_ips'] ?? '' ) );
-        $s['allowed_roles']     = array_map('sanitize_key', (array) ($_POST['allowed_roles'] ?? ['administrator']));
-        $s['bypass_param']      = sanitize_key($_POST['bypass_param']   ?? '');
-        $s['meta_robots']       = sanitize_key($_POST['meta_robots']    ?? 'noindex');
+        $s['allowed_roles']     = array_map('sanitize_key', (array) wp_unslash($_POST['allowed_roles'] ?? ['administrator']));
+        $s['bypass_param']      = sanitize_key(wp_unslash($_POST['bypass_param']   ?? ''));
+        $s['meta_robots']       = sanitize_key(wp_unslash($_POST['meta_robots']    ?? 'noindex'));
 
         update_option(self::OPTION, $s, false);
         wp_send_json_success(['msg' => 'Réglages enregistrés.', 'enabled' => (bool) $s['enabled']]);
@@ -76,7 +76,7 @@ class Alesta_AI_Maintenance_Module {
         if ( str_contains($req, '/wp-login.php') ) return;
 
         // Paramètre de contournement
-        if ( ! empty($s['bypass_param']) && isset($_GET[$s['bypass_param']]) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lecture seule, pas d'action
+        if ( ! empty($s['bypass_param']) && isset($_GET[ sanitize_key($s['bypass_param']) ]) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lecture seule, pas d'action
             setcookie('alesta_maint_bypass', '1', time() + 3600, '/');
             return;
         }

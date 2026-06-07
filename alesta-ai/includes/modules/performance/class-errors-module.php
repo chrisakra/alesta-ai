@@ -50,19 +50,6 @@ class Alesta_AI_Errors_Module {
         check_ajax_referer('alesta_ai_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error();
 
-        // Scoped to this single AJAX call that checks the HTTP status of every
-        // outbound link of one post. Without it the request times out on shared
-        // hosts (default max_execution_time = 30s) when a post contains many
-        // links pointing to slow third-party servers. We do not touch the
-        // global limit — the bump applies only to this request and PHP resets
-        // it on the next request.
-        if ( function_exists( 'set_time_limit' ) ) {
-            $current = (int) ini_get( 'max_execution_time' );
-            if ( $current !== 0 && $current < 25 ) {
-                @set_time_limit( 25 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors,Squiz.PHP.DiscouragedFunctions.Discouraged -- scoped to one long-running AJAX action (link scan), required for posts with many slow outbound links
-            }
-        }
-
         $post_id = absint( isset( $_POST['post_id'] ) ? wp_unslash( $_POST['post_id'] ) : 0 );
         if (!$post_id) wp_send_json_success(['checked' => 0, 'errors_found' => 0]);
 

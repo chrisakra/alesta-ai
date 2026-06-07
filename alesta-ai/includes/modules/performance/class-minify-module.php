@@ -10,12 +10,12 @@ defined('ABSPATH') || exit;
 class Alesta_AI_Minify_Module {
 
     const OPT       = 'alesta_minify_settings';
-    // The minify cache lives under wp-content/cache/ (mirrored by WP_CONTENT_URL).
-    // wp_upload_dir() would be wrong here: cached/minified CSS/JS are technical
-    // build artefacts, not user-uploaded media, and they have to sit next to
-    // other cache plugins (W3TC, WP Rocket…) under wp-content/cache/.
-    const CACHE_DIR = WP_CONTENT_DIR . '/cache/alesta-minify/';
-    const CACHE_URL = WP_CONTENT_URL  . '/cache/alesta-minify/';
+    // WP_CONTENT_DIR / WP_CONTENT_URL are the canonical constants for the
+    // wp-content directory. The minify cache MUST live under wp-content/cache/
+    // (same as W3TC, WP Rocket) — wp_upload_dir() would be wrong for build
+    // artefacts. phpcs:ignore covers compile-time class-constant requirement.
+    const CACHE_DIR = WP_CONTENT_DIR . '/cache/alesta-minify/'; // phpcs:ignore WordPressVIPMinimum.Constants.ConstantString.NotCheckingConstantValue
+    const CACHE_URL = WP_CONTENT_URL  . '/cache/alesta-minify/'; // phpcs:ignore WordPressVIPMinimum.Constants.ConstantString.NotCheckingConstantValue
 
     // =========================================================================
     // INIT
@@ -139,26 +139,28 @@ class Alesta_AI_Minify_Module {
 
     public static function start_html_buffer(): void {
         if ( is_admin() || wp_doing_ajax() ) return;
-        // ob_start() + matching ob_get_clean() guaranteed: end_html_buffer()
-        // is hooked to 'shutdown' at priority 0 (before WordPress flushes its
-        // own buffers) and double-checks ob_get_level() before reading.
-        ob_start();
+        $settings = self::settings();
+        // Self-contained: ob_start with callback processes the full HTML page
+        // through the minifier and returns it — no separate ob_get_clean() in
+        // another function, complying with WP.org output-buffering policy.
+        ob_start( function( string $html ) use ( $settings ): string {
+            if ( $html === '' ) return $html;
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML already escaped by WordPress; minifier only removes whitespace/comments
+            return self::minify_html( $html, $settings );
+        } );
         add_action( 'shutdown', [__CLASS__, 'end_html_buffer'], 0 );
     }
 
     /**
-     * Closes the output buffer opened in start_html_buffer(), processes the
-     * captured HTML through the minifier, and sends the result to output.
+     * Closes the output buffer opened in start_html_buffer().
+     * The ob_start callback already processed the HTML, so ob_end_flush()
+     * simply sends the minified output.
      * Hooked to 'shutdown' at priority 0 so it fires before WordPress flushes
      * its own buffers.
      */
     public static function end_html_buffer(): void {
         if ( ob_get_level() < 1 ) return;
-        $html = ob_get_clean();
-        if ( $html !== false && $html !== '' ) {
-            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML already escaped by WordPress; minifier only removes whitespace/comments
-            echo self::minify_html( $html, self::settings() );
-        }
+        ob_end_flush();
     }
 
     // =========================================================================
@@ -360,9 +362,12 @@ class Alesta_AI_Minify_Module {
 
         // Resolving a public CSS/JS URL back to its on-disk location. The file
         // could live anywhere under the WordPress root (theme, plugin, mu-plugin,
-        // uploads). ABSPATH is the only anchor that covers all of them — wp_upload_dir()
-        // would only resolve /uploads/ assets and miss theme/plugin assets entirely.
-        $path = rtrim(ABSPATH, '/') . '/' . ltrim($relative, '/');
+        // uploads). get_home_path() is the official WP helper for this — ABSPATH
+        // would also work but triggers PHPCS. wp_upload_dir() only covers /uploads/.
+        if ( ! function_exists( 'get_home_path' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
+        }
+        $path = rtrim( get_home_path(), '/\\' ) . '/' . ltrim($relative, '/');
         return ( file_exists($path) && is_file($path) ) ? $path : '';
     }
 
@@ -440,7 +445,7 @@ class Alesta_AI_Minify_Module {
         if ( ! current_user_can('manage_options') ) wp_send_json_error(['message' => 'Accès refusé.']);
 
         $type    = sanitize_key( wp_unslash($_POST['type']  ?? '') );
-        $value   = ! empty($_POST['value']);
+        $value   = ! empty( wp_unslash( $_POST['value'] ?? '' ) );
         $allowed = ['css_enabled', 'js_enabled', 'html_enabled', 'preload_enabled'];
 
         if ( ! in_array($type, $allowed, true) ) wp_send_json_error(['message' => 'Type invalide.']);
@@ -466,8 +471,8 @@ class Alesta_AI_Minify_Module {
                 $s['js_excludes'] = sanitize_textarea_field( wp_unslash($_POST['excludes'] ?? '') );
                 break;
             case 'html':
-                $s['html_remove_comments']   = ! empty($_POST['remove_comments']);
-                $s['html_remove_whitespace'] = ! empty($_POST['remove_whitespace']);
+                $s['html_remove_comments']   = ! empty( wp_unslash( $_POST['remove_comments']   ?? '' ) );
+                $s['html_remove_whitespace'] = ! empty( wp_unslash( $_POST['remove_whitespace'] ?? '' ) );
                 break;
             case 'preload':
                 $s['preload_mode']     = sanitize_key( wp_unslash($_POST['preload_mode'] ?? 'all') );

@@ -566,11 +566,13 @@ class Alesta_AI_Admin_Htaccess {
                 $homeurl     = get_option('home', '');
                 $has_www     = (bool) preg_match('#^https?://www\.#i', $siteurl);
                 $www_marker  = 'Alesta-WWW';
-                // .htaccess lives at the WordPress root by definition — ABSPATH
-                // is the only correct anchor. Read-only lookup via WP's
-                // extract_from_markers().
-                $www_htaccess_active = file_exists(ABSPATH . '.htaccess')
-                    && !empty(array_filter(extract_from_markers(ABSPATH . '.htaccess', $www_marker)));
+                // Use get_home_path() (official WP helper) for the WP root path.
+                if ( ! function_exists( 'get_home_path' ) ) {
+                    require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
+                }
+                $htaccess_path       = get_home_path() . '.htaccess';
+                $www_htaccess_active = file_exists( $htaccess_path )
+                    && !empty(array_filter(extract_from_markers( $htaccess_path, $www_marker)));
                 ?>
                 <div id="tab-www" class="htaccess-tab-content" style="display:<?php echo esc_attr( $active_tab==='www'?'block':'none' ); ?>;">
                     <div style="display:flex;flex-direction:column;gap:24px;">

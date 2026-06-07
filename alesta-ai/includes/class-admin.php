@@ -181,14 +181,17 @@ class Alesta_AI_Admin {
         $wp_version    = get_bloginfo('version');
         $php_version   = PHP_VERSION;
         $debug_on      = defined('WP_DEBUG') && WP_DEBUG;
-        // Dashboard cards look up well-known files at the WordPress root
-        // (llms.txt, llms-full.txt, robots.txt). Read-only file_exists checks —
-        // ABSPATH is the only correct anchor for these root-level files.
-        $llms_exists   = file_exists(trailingslashit(ABSPATH) . 'llms.txt');
-        $llms_full     = file_exists(trailingslashit(ABSPATH) . 'llms-full.txt');
+        // Dashboard cards look up well-known files at the WordPress root.
+        // get_home_path() is the official WP helper for the WP root filesystem path.
+        if ( ! function_exists( 'get_home_path' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
+        }
+        $home_path     = trailingslashit( get_home_path() );
+        $llms_exists   = file_exists( $home_path . 'llms.txt' );
+        $llms_full     = file_exists( $home_path . 'llms-full.txt' );
         $llms_count    = (int) get_option('alesta_llms_url_count', 0);
         $llms_last     = get_option('alesta_llms_last_generated', '');
-        $robots_exists = file_exists(trailingslashit(ABSPATH) . 'robots.txt');
+        $robots_exists = file_exists( $home_path . 'robots.txt' );
         $php_ok        = version_compare($php_version, '8.0', '>=');
         $wp_ok         = version_compare($wp_version,  '6.4', '>=');
 
@@ -204,9 +207,9 @@ class Alesta_AI_Admin {
 
         // --- Espace disque ---
         // disk_free_space()/disk_total_space() report on the filesystem hosting
-        // the given path — ABSPATH is correct here (= the WP install root).
-        $disk_free    = function_exists('disk_free_space')  ? @disk_free_space(ABSPATH)  : false; // phpcs:ignore WordPress.PHP.NoSilencedErrors
-        $disk_total   = function_exists('disk_total_space') ? @disk_total_space(ABSPATH) : false; // phpcs:ignore WordPress.PHP.NoSilencedErrors
+        // the given path — get_home_path() (official WP helper) is used instead of ABSPATH.
+        $disk_free    = function_exists('disk_free_space')  ? @disk_free_space( get_home_path() )  : false; // phpcs:ignore WordPress.PHP.NoSilencedErrors
+        $disk_total   = function_exists('disk_total_space') ? @disk_total_space( get_home_path() ) : false; // phpcs:ignore WordPress.PHP.NoSilencedErrors
         $disk_pct     = ($disk_free !== false && $disk_total > 0) ? (int) round((1 - $disk_free / $disk_total) * 100) : null;
         $disk_free_gb = ($disk_free !== false) ? round($disk_free / 1073741824, 1) : null;
 

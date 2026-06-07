@@ -145,8 +145,14 @@ class Alesta_AI_Admin_Fonts {
                 <span class="gf-info-icon"><?php echo $dir_ok ? '✅' : '❌'; ?></span>
                 <div>
                     <strong>Dossier de stockage :</strong>
-                    <?php // Display the storage folder as a relative path by stripping ABSPATH (cosmetic only — escaped via esc_html). ?>
-                    <code><?php echo esc_html( str_replace(ABSPATH, '', $fonts_dir) ); ?></code>
+                    <?php
+                    // Display the storage folder as a relative path for readability.
+                    // get_home_path() is used to strip the WP root prefix cosmetically.
+                    if ( ! function_exists( 'get_home_path' ) ) {
+                        require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
+                    }
+                    ?>
+                    <code><?php echo esc_html( str_replace( get_home_path(), '', $fonts_dir ) ); ?></code>
                     <?php echo $dir_ok ? '<span style="color:#16a34a;margin-left:8px;">Accessible en écriture</span>' : '<span style="color:#dc2626;margin-left:8px;">Non accessible — vérifiez les permissions</span>'; ?>
                 </div>
             </div>

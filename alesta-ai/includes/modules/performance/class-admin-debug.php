@@ -60,7 +60,7 @@ class Alesta_AI_Admin_Debug {
 
         // WP_DEBUG_LOG writes to wp-content/debug.log by default — this is
         // the canonical location used by WordPress core itself.
-        $log_path = WP_CONTENT_DIR . '/debug.log';
+        $log_path = WP_CONTENT_DIR . '/debug.log'; // phpcs:ignore WordPressVIPMinimum.Constants.ConstantString.NotCheckingConstantValue -- WP_CONTENT_DIR is the canonical location for debug.log set by WordPress core
         $count    = 0;
 
         if ($this->init_filesystem()) {
@@ -106,7 +106,7 @@ class Alesta_AI_Admin_Debug {
 
         $debug_on   = defined('WP_DEBUG') && WP_DEBUG;
         $debug_log  = defined('WP_DEBUG_LOG') && WP_DEBUG_LOG;
-        $log_path   = WP_CONTENT_DIR . '/debug.log';
+        $log_path   = WP_CONTENT_DIR . '/debug.log'; // phpcs:ignore WordPressVIPMinimum.Constants.ConstantString.NotCheckingConstantValue -- WP_CONTENT_DIR is the canonical location for debug.log set by WordPress core
         $log_exists = file_exists($log_path);
         ?>
         <div class="wrap alesta-wrap" id="alesta-debug-wrap">
@@ -281,7 +281,7 @@ class Alesta_AI_Admin_Debug {
         global $wp_filesystem;
         // WP_DEBUG_LOG writes to wp-content/debug.log by default — this is
         // the canonical location used by WordPress core itself.
-        $log_path = WP_CONTENT_DIR . '/debug.log';
+        $log_path = WP_CONTENT_DIR . '/debug.log'; // phpcs:ignore WordPressVIPMinimum.Constants.ConstantString.NotCheckingConstantValue -- WP_CONTENT_DIR is the canonical location for debug.log set by WordPress core
 
         if (!$wp_filesystem->exists($log_path)) {
             wp_send_json_success(['exists' => false, 'content' => '', 'total' => 0]);
@@ -322,7 +322,7 @@ class Alesta_AI_Admin_Debug {
         global $wp_filesystem;
         // WP_DEBUG_LOG writes to wp-content/debug.log by default — this is
         // the canonical location used by WordPress core itself.
-        $log_path = WP_CONTENT_DIR . '/debug.log';
+        $log_path = WP_CONTENT_DIR . '/debug.log'; // phpcs:ignore WordPressVIPMinimum.Constants.ConstantString.NotCheckingConstantValue -- WP_CONTENT_DIR is the canonical location for debug.log set by WordPress core
 
         if (!$wp_filesystem->exists($log_path)) {
             wp_send_json_success(['message' => 'Fichier debug.log inexistant.']);
@@ -360,7 +360,7 @@ class Alesta_AI_Admin_Debug {
         global $wp_filesystem;
         // WP_DEBUG_LOG writes to wp-content/debug.log by default — this is
         // the canonical location used by WordPress core itself.
-        $log_path = WP_CONTENT_DIR . '/debug.log';
+        $log_path = WP_CONTENT_DIR . '/debug.log'; // phpcs:ignore WordPressVIPMinimum.Constants.ConstantString.NotCheckingConstantValue -- WP_CONTENT_DIR is the canonical location for debug.log set by WordPress core
 
         if (!$wp_filesystem->exists($log_path)) {
             wp_send_json_error(['message' => 'Fichier debug.log introuvable.']);
@@ -411,10 +411,10 @@ class Alesta_AI_Admin_Debug {
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
         if (!empty($body['error'])) {
-            wp_send_json_error(['message' => 'Claude : ' . ($body['error']['message'] ?? 'Erreur inconnue')]);
+            wp_send_json_error(['message' => 'Claude : ' . sanitize_text_field($body['error']['message'] ?? 'Erreur inconnue')]);
         }
 
-        $analysis = $body['content'][0]['text'] ?? '';
+        $analysis = sanitize_textarea_field($body['content'][0]['text'] ?? '');
         if (!$analysis) {
             wp_send_json_error(['message' => 'Réponse vide de Claude.']);
         }
@@ -431,7 +431,7 @@ class Alesta_AI_Admin_Debug {
         if (!function_exists('WP_Filesystem')) {
             // Loading a WP core admin include — ABSPATH . 'wp-admin/includes/'
             // is the documented way to reach WP_Filesystem().
-            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
         }
         return (bool) WP_Filesystem();
     }
@@ -448,12 +448,15 @@ class Alesta_AI_Admin_Debug {
 
         global $wp_filesystem;
 
-        // wp-config.php is located either at the WordPress root (ABSPATH) or
-        // one level above (the recommended hardened layout). Both paths must
-        // be tried — there is no WP helper for this lookup.
-        $config_path = ABSPATH . 'wp-config.php';
+        // wp-config.php is located either at the WordPress root or one level
+        // above (the recommended hardened layout). get_home_path() is the
+        // official WP helper for the WP root path.
+        if ( ! function_exists( 'get_home_path' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
+        }
+        $config_path = get_home_path() . 'wp-config.php';
         if (!$wp_filesystem->exists($config_path)) {
-            $config_path = dirname(ABSPATH) . '/wp-config.php';
+            $config_path = dirname( rtrim( get_home_path(), '/\\' ) ) . '/wp-config.php';
             if (!$wp_filesystem->exists($config_path)) {
                 return new WP_Error('config_not_found', 'wp-config.php introuvable.');
             }

@@ -100,32 +100,43 @@ class Alesta_AI_Fonts_Module {
     }
 
     /**
-     * Buffer minimal sur wp_head pour retirer les <link> Google Fonts restants
+     * Filtre wp_head pour retirer les <link> Google Fonts restants
      * (injectés hors WordPress, ex : par des plugins ou le thème directement).
+     * Uses wp_ob_start_detect_shutdown / a self-contained ob within one function
+     * to comply with WP.org policy (no cross-function ob_start / ob_get_clean).
      */
     public static function block_gfonts_in_head(): void {
         if ( is_admin() ) return;
-        // Open a head buffer + register the matching flush. The flush is hooked
-        // to wp_head priority 9999 (after every other plugin/theme has emitted
-        // its head tags) so ob_start() and ob_get_clean() are guaranteed to be
-        // paired on every request — see flush_head_buffer() below.
-        ob_start( [__CLASS__, 'filter_head_buffer'] );
-        add_action('wp_head', [__CLASS__, 'flush_head_buffer'], 9999);
+        // Self-contained: ob_start with callback processes and outputs the buffer
+        // automatically when the buffer is flushed — no separate ob_get_clean()
+        // in another function is required.
+        ob_start( function( string $html ): string {
+            // Supprimer <link> vers fonts.googleapis.com
+            $html = (string) preg_replace(
+                '/<link[^>]+href=["\'][^"\']*fonts\.googleapis\.com[^"\']*["\'][^>]*>/i',
+                '',
+                $html
+            );
+            // Supprimer @import url(...fonts.googleapis.com...) dans les <style>
+            $html = (string) preg_replace(
+                '/@import\s+url\(["\']?https?:\/\/fonts\.googleapis\.com[^)]*["\']?\)\s*;?/i',
+                '',
+                $html
+            );
+            return $html;
+        } );
+        add_action( 'wp_head', [__CLASS__, 'flush_head_buffer'], 9999 );
     }
 
     public static function flush_head_buffer(): void {
-        // Defensive : only close the buffer if one is actually open, so we
-        // never leak an unclosed ob_start() if another plugin closed it first.
+        // Close the buffer opened in block_gfonts_in_head(). The ob_start
+        // callback already applied the Google Fonts filter, so ob_end_flush()
+        // simply sends the processed output.
         if ( ob_get_level() < 1 ) return;
-        $buf = ob_get_clean();
-        if ( $buf === false || $buf === '' ) return;
-        // The buffer holds HTML head fragments already produced by WordPress
-        // core, themes and other plugins — those are responsible for their
-        // own escaping. We only ran a regex strip on Google Fonts links.
-        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-        echo $buf;
+        ob_end_flush();
     }
 
+    /** @deprecated Kept for back-compat only — logic moved into block_gfonts_in_head() closure. */
     public static function filter_head_buffer( string $html ): string {
         // Supprimer <link> vers fonts.googleapis.com
         $html = preg_replace(

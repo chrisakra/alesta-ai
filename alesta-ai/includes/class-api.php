@@ -88,11 +88,11 @@ class Alesta_AI_API {
             $this->track_usage(
                 (int) ($body['usage']['input_tokens']  ?? 0),
                 (int) ($body['usage']['output_tokens'] ?? 0),
-                $body['model'] ?? $this->model
+                sanitize_text_field($body['model'] ?? $this->model)
             );
         }
 
-        return $body['content'][0]['text'] ?? '';
+        return sanitize_textarea_field($body['content'][0]['text'] ?? '');
     }
 
     /**

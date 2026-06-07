@@ -34,7 +34,7 @@ class Alesta_AI_Admin_Budget {
         Alesta_AI_API::save_budget_settings([
             'monthly_limit'   => sanitize_text_field(wp_unslash($_POST['monthly_limit']   ?? '')),
             'alert_threshold' => (int) sanitize_text_field(wp_unslash($_POST['alert_threshold'] ?? 80)),
-            'block_on_limit'  => !empty($_POST['block_on_limit']) && $_POST['block_on_limit'] === '1',
+            'block_on_limit'  => !empty($_POST['block_on_limit']) && wp_unslash($_POST['block_on_limit']) === '1',
             'alert_email'     => sanitize_email(wp_unslash($_POST['alert_email'] ?? '')),
         ]);
         wp_send_json_success(['msg' => 'Réglages enregistrés.']);

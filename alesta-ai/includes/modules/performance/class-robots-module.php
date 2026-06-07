@@ -5,9 +5,17 @@ class Alesta_AI_Robots_Module {
 
     const BACKUP_KEY      = 'alesta_robots_backup';
     const BACKUP_DATE_KEY = 'alesta_robots_backup_date';
-    // robots.txt is by convention served from the WordPress root
-    // (https://example.com/robots.txt) — ABSPATH is the only correct anchor.
-    const ROBOTS_FILE     = ABSPATH . 'robots.txt';
+
+    /**
+     * Returns the absolute path to robots.txt at the WordPress root.
+     * Uses get_home_path() (official WP helper) instead of ABSPATH directly.
+     */
+    private static function robots_path(): string {
+        if ( ! function_exists( 'get_home_path' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
+        }
+        return get_home_path() . 'robots.txt';
+    }
 
     public function __construct() {
         add_action('wp_ajax_alesta_robots_read',    [$this, 'ajax_read']);
@@ -23,18 +31,19 @@ class Alesta_AI_Robots_Module {
     // =========================================================================
 
     private function can_write(): bool {
-        if (!file_exists(self::ROBOTS_FILE)) {
-            return is_writable(ABSPATH); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
+        $path = self::robots_path(); // get_home_path() already loaded inside
+        if (!file_exists($path)) {
+            return is_writable( get_home_path() ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
         }
-        return is_writable(self::ROBOTS_FILE); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
+        return is_writable($path); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
     }
 
     private function read_robots(): string {
-        if (!file_exists(self::ROBOTS_FILE)) return '';
+        if (!file_exists(self::robots_path())) return '';
         // Direct read of robots.txt at the WP root. WP_Filesystem would need
         // FTP creds in non-direct setups, which we cannot prompt for from an
         // AJAX handler. Read-only access to a known root file.
-        $content = file_get_contents(self::ROBOTS_FILE); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+        $content = file_get_contents(self::robots_path()); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
         return $content !== false ? $content : '';
     }
 
@@ -56,7 +65,7 @@ class Alesta_AI_Robots_Module {
 
     private function is_virtual_robots(): bool {
         // WordPress genere un robots.txt virtuel si aucun fichier physique n'existe
-        return !file_exists(self::ROBOTS_FILE);
+        return !file_exists(self::robots_path());
     }
 
     // =========================================================================
@@ -67,7 +76,7 @@ class Alesta_AI_Robots_Module {
         if (!current_user_can('manage_options')) wp_send_json_error();
 
         wp_send_json_success([
-            'exists'      => file_exists(self::ROBOTS_FILE),
+            'exists'      => file_exists(self::robots_path()),
             'can_write'   => $this->can_write(),
             'is_virtual'  => $this->is_virtual_robots(),
             'content'     => $this->read_robots(),
@@ -94,7 +103,7 @@ class Alesta_AI_Robots_Module {
         $this->make_backup();
         // can_write() above already confirmed write access — direct write to
         // the WP-root robots.txt is the simplest reliable path.
-        $result = file_put_contents(self::ROBOTS_FILE, $content); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents
+        $result = file_put_contents(self::robots_path(), $content); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents
 
         if ($result === false) {
             wp_send_json_error(['message' => 'Échec de l\'écriture du robots.txt.']);
@@ -116,7 +125,7 @@ class Alesta_AI_Robots_Module {
 
         $this->make_backup();
         $content = $this->default_content();
-        file_put_contents(self::ROBOTS_FILE, $content); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents -- writability checked above via can_write()
+        file_put_contents(self::robots_path(), $content); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents -- writability checked above via can_write()
 
         wp_send_json_success([
             'message' => 'robots.txt reinitialise avec les valeurs par defaut.',
@@ -154,7 +163,7 @@ class Alesta_AI_Robots_Module {
             wp_send_json_error(['message' => 'Le fichier robots.txt n\'est pas accessible en écriture.']);
         }
 
-        file_put_contents(self::ROBOTS_FILE, $backup); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents -- writability checked above via can_write()
+        file_put_contents(self::robots_path(), $backup); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents -- writability checked above via can_write()
         wp_send_json_success([
             'message' => 'Sauvegarde restauree avec succes.',
             'content' => $backup,

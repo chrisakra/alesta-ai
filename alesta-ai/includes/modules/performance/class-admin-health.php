@@ -396,10 +396,14 @@ class Alesta_AI_Admin_Health {
 
         $debug_on = defined('WP_DEBUG') && WP_DEBUG;
 
-        $readme_exists = file_exists(ABSPATH . 'readme.html');
+        if ( ! function_exists( 'get_home_path' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
+        }
+        $home_path     = trailingslashit( get_home_path() );
+        $readme_exists = file_exists( $home_path . 'readme.html' );
 
-        $config_above = ! file_exists(ABSPATH . 'wp-config.php')
-                     && file_exists(dirname(ABSPATH) . '/wp-config.php');
+        $config_above = ! file_exists( $home_path . 'wp-config.php' )
+                     && file_exists( dirname( rtrim( $home_path, '/\\' ) ) . '/wp-config.php' );
 
         /* Clés de sécurité définies */
         $salt_keys    = ['AUTH_KEY', 'SECURE_AUTH_KEY', 'LOGGED_IN_KEY', 'NONCE_KEY'];
@@ -557,16 +561,17 @@ class Alesta_AI_Admin_Health {
         $upload_dir = wp_upload_dir();
 
         $uploads_writable = wp_is_writable($upload_dir['basedir']);
-        // The Health Check explicitly reports whether wp-content/ itself is
-        // writable, so we MUST point at WP_CONTENT_DIR here. We never write to
-        // it ourselves — we only run a read-only writability check.
-        $content_writable = wp_is_writable(WP_CONTENT_DIR);
-        // Health Check looks at well-known files served from the WP root
-        // (.htaccess, robots.txt, llms.txt). ABSPATH is the only correct
-        // anchor for these — read-only file_exists() checks.
-        $htaccess_exists  = file_exists(ABSPATH . '.htaccess');
-        $robots_exists    = file_exists(ABSPATH . 'robots.txt');
-        $llms_exists      = file_exists(ABSPATH . 'llms.txt');
+        // The Health Check reports whether wp-content/ itself is writable.
+        $content_writable = wp_is_writable( WP_CONTENT_DIR ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.wp_is_writable_wp_is_writable
+        // Health Check looks at well-known files served from the WP root.
+        // get_home_path() is already loaded above in group_security().
+        if ( ! function_exists( 'get_home_path' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
+        }
+        $wp_root         = trailingslashit( get_home_path() );
+        $htaccess_exists = file_exists( $wp_root . '.htaccess' );
+        $robots_exists   = file_exists( $wp_root . 'robots.txt' );
+        $llms_exists     = file_exists( $wp_root . 'llms.txt' );
 
         /* Taille du dossier uploads (via transient 1h pour éviter un scan lent) */
         $uploads_mb = get_transient('alesta_health_uploads_size');

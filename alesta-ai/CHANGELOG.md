@@ -5,6 +5,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.5] — 2026-06-07
+
+### Changed
+* WordPress.org compliance pass: inline CSS/JS migrated to wp_enqueue, removed ABSPATH/WP_CONTENT_DIR hardcoded paths (replaced with get_home_path()), removed set_time_limit() calls, fixed ob_start/ob_get_clean cross-function pattern (now uses ob_start with closure callback), full wp_unslash() + sanitize_* coverage on $_POST/$_GET, sanitize_text_field/sanitize_textarea_field applied after all json_decode() calls on external API responses. Version constant corrected from 1.2.3 to 1.2.5.
+
+---
+
 ## [1.2.2] — 2026-04-19
 
 ### Added

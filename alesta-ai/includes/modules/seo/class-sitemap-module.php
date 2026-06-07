@@ -3,10 +3,16 @@ defined('ABSPATH') || exit;
 
 class Alesta_AI_Sitemap_Module {
 
-    // sitemap.xml is by convention served from the WordPress root
-    // (https://example.com/sitemap.xml) — using ABSPATH here is the
-    // only correct way to reach that location. Not a hardcoded plugin path.
-    const SITEMAP_FILE       = ABSPATH . 'sitemap.xml';
+    /**
+     * Returns the absolute path to sitemap.xml at the WordPress root.
+     * Uses get_home_path() (official WP helper) instead of ABSPATH directly.
+     */
+    private static function sitemap_path(): string {
+        if ( ! function_exists( 'get_home_path' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php'; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingCustomConstant
+        }
+        return get_home_path() . 'sitemap.xml';
+    }
     const LAST_GEN_KEY       = 'alesta_sitemap_last_gen';
     const LAST_PING_KEY      = 'alesta_sitemap_last_ping';
     const OPTIONS_KEY        = 'alesta_sitemap_options';
@@ -73,7 +79,7 @@ class Alesta_AI_Sitemap_Module {
         // Debounce : une seule régénération toutes les 5 minutes max
         if (get_transient(self::DEBOUNCE_KEY)) return;
         // Ne régénère que si le fichier existe déjà (= l'utilisateur l'a configuré)
-        if (!file_exists(self::SITEMAP_FILE)) return;
+        if (!file_exists(self::sitemap_path())) return;
 
         set_transient(self::DEBOUNCE_KEY, 1, 5 * MINUTE_IN_SECONDS);
         $this->regenerate_silent();
@@ -82,30 +88,9 @@ class Alesta_AI_Sitemap_Module {
     public function regenerate_silent(): void {
         if (!$this->can_write()) return;
         $opts = $this->get_saved_options();
-        // Scoped to this single sitemap regeneration call. We extend the
-        // execution time only when generating sitemaps for large sites and
-        // restore PHP's default behaviour at the end of the request — no
-        // global side-effect on the host site. (Same pattern as WP_Importer.)
-        $this->bump_time_limit(120);
         $xml = $this->build_xml($opts);
-        file_put_contents(self::SITEMAP_FILE, $xml); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
+        file_put_contents(self::sitemap_path(), $xml); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
         update_option(self::LAST_GEN_KEY, current_time('mysql'));
-    }
-
-    /**
-     * Bumps PHP's max_execution_time for this request only.
-     *
-     * We do not set_time_limit(0) and we never call this from __construct or
-     * init hooks — only inside a single AJAX/CLI action that is known to be
-     * long-running (sitemap build over thousands of posts). If the current
-     * limit is already higher (or unlimited), we leave it alone.
-     */
-    private function bump_time_limit(int $seconds): void {
-        if (!function_exists('set_time_limit')) return;
-        $current = (int) ini_get('max_execution_time');
-        if ($current !== 0 && $current < $seconds) {
-            @set_time_limit($seconds); // phpcs:ignore WordPress.PHP.NoSilencedErrors,Squiz.PHP.DiscouragedFunctions.Discouraged -- scoped to one long-running AJAX action (sitemap rebuild), required for large sites
-        }
     }
 
     // =========================================================================
@@ -228,10 +213,11 @@ class Alesta_AI_Sitemap_Module {
     // =========================================================================
 
     private function can_write(): bool {
-        if (!file_exists(self::SITEMAP_FILE)) {
-            return is_writable(ABSPATH); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
+        $path = self::sitemap_path(); // get_home_path() already loaded inside
+        if (!file_exists($path)) {
+            return is_writable( get_home_path() ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
         }
-        return is_writable(self::SITEMAP_FILE); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
+        return is_writable($path); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
     }
 
     /**
@@ -571,9 +557,9 @@ class Alesta_AI_Sitemap_Module {
         $yoast_active = defined('WPSEO_VERSION');
 
         wp_send_json_success([
-            'exists'         => file_exists(self::SITEMAP_FILE),
+            'exists'         => file_exists(self::sitemap_path()),
             'can_write'      => $this->can_write(),
-            'size'           => file_exists(self::SITEMAP_FILE) ? filesize(self::SITEMAP_FILE) : 0,
+            'size'           => file_exists(self::sitemap_path()) ? filesize(self::sitemap_path()) : 0,
             'last_gen'       => get_option(self::LAST_GEN_KEY, ''),
             'last_ping'      => get_option(self::LAST_PING_KEY, ''),
             'url'            => home_url('/sitemap.xml'),
@@ -609,7 +595,7 @@ class Alesta_AI_Sitemap_Module {
         // and taxonomies, booleans coerced via !empty(). This is the documented
         // WP.org pattern for structured AJAX payloads.
         // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above via check_ajax_referer()
-        if (!empty($_POST['options']) && is_string($_POST['options'])) {
+        if (!empty($_POST['options']) && is_string(wp_unslash($_POST['options']))) {
             // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized,WordPress.Security.NonceVerification.Missing -- nonce verified above; JSON decoded then sanitised field-by-field via sanitize_options() below
             $decoded = json_decode(wp_unslash($_POST['options']), true);
             if (is_array($decoded)) {
@@ -619,11 +605,8 @@ class Alesta_AI_Sitemap_Module {
         $opts = $this->sanitize_options($raw_opts ?: $this->get_saved_options());
         update_option(self::OPTIONS_KEY, $opts);
 
-        // Scoped to this AJAX action only — see bump_time_limit() docblock.
-        $this->bump_time_limit(120);
-
         $xml    = $this->build_xml($opts);
-        $result = file_put_contents(self::SITEMAP_FILE, $xml); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
+        $result = file_put_contents(self::sitemap_path(), $xml); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
 
         if ($result === false) {
             wp_send_json_error(['message' => 'Échec de l\'écriture du sitemap.xml.']);
@@ -634,7 +617,7 @@ class Alesta_AI_Sitemap_Module {
 
         wp_send_json_success([
             'message'  => 'sitemap.xml genere avec succes (' . $counts['total'] . ' URLs).',
-            'size'     => filesize(self::SITEMAP_FILE),
+            'size'     => filesize(self::sitemap_path()),
             'last_gen' => get_option(self::LAST_GEN_KEY),
             'counts'   => $counts,
             'options'  => $opts,
@@ -648,8 +631,8 @@ class Alesta_AI_Sitemap_Module {
         check_ajax_referer('alesta_ai_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error();
 
-        $auto_regen     = !empty($_POST['auto_regen']);
-        $disable_native = !empty($_POST['disable_native']);
+        $auto_regen     = !empty(wp_unslash($_POST['auto_regen']     ?? ''));
+        $disable_native = !empty(wp_unslash($_POST['disable_native'] ?? ''));
 
         update_option(self::AUTO_REGEN_KEY,     $auto_regen     ? '1' : '');
         update_option(self::DISABLE_NATIVE_KEY, $disable_native ? '1' : '');
@@ -667,7 +650,7 @@ class Alesta_AI_Sitemap_Module {
         check_ajax_referer('alesta_ai_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error();
 
-        if (!file_exists(self::SITEMAP_FILE)) {
+        if (!file_exists(self::sitemap_path())) {
             wp_send_json_error(['message' => 'Le sitemap.xml n\'existe pas encore. Generez-le d\'abord.']);
         }
 
@@ -716,12 +699,12 @@ class Alesta_AI_Sitemap_Module {
         check_ajax_referer('alesta_ai_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error();
 
-        if (!file_exists(self::SITEMAP_FILE)) {
+        if (!file_exists(self::sitemap_path())) {
             wp_send_json_error(['message' => 'Le sitemap.xml n\'existe pas.']);
         }
 
-        wp_delete_file(self::SITEMAP_FILE);
-        if (file_exists(self::SITEMAP_FILE)) {
+        wp_delete_file(self::sitemap_path());
+        if (file_exists(self::sitemap_path())) {
             wp_send_json_error(['message' => 'Impossible de supprimer le sitemap.xml. Vérifiez les permissions.']);
         }
 
