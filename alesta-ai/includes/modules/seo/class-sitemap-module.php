@@ -594,10 +594,14 @@ class Alesta_AI_Sitemap_Module {
         // by $this->sanitize_options() — sanitize_key + whitelist for post_types
         // and taxonomies, booleans coerced via !empty(). This is the documented
         // WP.org pattern for structured AJAX payloads.
-        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above via check_ajax_referer()
-        if (!empty($_POST['options']) && is_string(wp_unslash($_POST['options']))) {
+        // The guard reads $_POST['options'] as a raw JSON string. wp_unslash is
+        // applied; sanitize_text_field would strip the JSON braces so we cannot
+        // sanitize at the string level — every decoded field is sanitised
+        // individually via sanitize_options() below.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized,WordPress.Security.NonceVerification.Missing -- nonce verified above via check_ajax_referer(); JSON guarded with isset+is_string, decoded then sanitised field-by-field via sanitize_options()
+        if ( ! empty( $_POST['options'] ) && is_string( wp_unslash( $_POST['options'] ) ) ) {
             // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized,WordPress.Security.NonceVerification.Missing -- nonce verified above; JSON decoded then sanitised field-by-field via sanitize_options() below
-            $decoded = json_decode(wp_unslash($_POST['options']), true);
+            $decoded = json_decode( wp_unslash( $_POST['options'] ), true );
             if (is_array($decoded)) {
                 $raw_opts = $decoded;
             }
@@ -631,8 +635,8 @@ class Alesta_AI_Sitemap_Module {
         check_ajax_referer('alesta_ai_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error();
 
-        $auto_regen     = !empty(wp_unslash($_POST['auto_regen']     ?? ''));
-        $disable_native = !empty(wp_unslash($_POST['disable_native'] ?? ''));
+        $auto_regen     = ! empty( sanitize_text_field( wp_unslash( $_POST['auto_regen']     ?? '' ) ) );
+        $disable_native = ! empty( sanitize_text_field( wp_unslash( $_POST['disable_native'] ?? '' ) ) );
 
         update_option(self::AUTO_REGEN_KEY,     $auto_regen     ? '1' : '');
         update_option(self::DISABLE_NATIVE_KEY, $disable_native ? '1' : '');

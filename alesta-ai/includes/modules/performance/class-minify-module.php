@@ -445,7 +445,7 @@ class Alesta_AI_Minify_Module {
         if ( ! current_user_can('manage_options') ) wp_send_json_error(['message' => 'Accès refusé.']);
 
         $type    = sanitize_key( wp_unslash($_POST['type']  ?? '') );
-        $value   = ! empty( wp_unslash( $_POST['value'] ?? '' ) );
+        $value   = ! empty( sanitize_text_field( wp_unslash( $_POST['value'] ?? '' ) ) );
         $allowed = ['css_enabled', 'js_enabled', 'html_enabled', 'preload_enabled'];
 
         if ( ! in_array($type, $allowed, true) ) wp_send_json_error(['message' => 'Type invalide.']);
@@ -471,8 +471,8 @@ class Alesta_AI_Minify_Module {
                 $s['js_excludes'] = sanitize_textarea_field( wp_unslash($_POST['excludes'] ?? '') );
                 break;
             case 'html':
-                $s['html_remove_comments']   = ! empty( wp_unslash( $_POST['remove_comments']   ?? '' ) );
-                $s['html_remove_whitespace'] = ! empty( wp_unslash( $_POST['remove_whitespace'] ?? '' ) );
+                $s['html_remove_comments']   = ! empty( sanitize_text_field( wp_unslash( $_POST['remove_comments']   ?? '' ) ) );
+                $s['html_remove_whitespace'] = ! empty( sanitize_text_field( wp_unslash( $_POST['remove_whitespace'] ?? '' ) ) );
                 break;
             case 'preload':
                 $s['preload_mode']     = sanitize_key( wp_unslash($_POST['preload_mode'] ?? 'all') );

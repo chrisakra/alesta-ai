@@ -35,7 +35,7 @@ class Alesta_AI_Maintenance_Module {
         $s['bg_image_url'] = esc_url_raw( wp_unslash( $_POST['bg_image_url']        ?? '' ) );
         $s['text_color']   = sanitize_hex_color( wp_unslash( $_POST['text_color']   ?? '#ffffff' ) ) ?: '#ffffff';
         $s['accent_color'] = sanitize_hex_color( wp_unslash( $_POST['accent_color'] ?? '#3b82f6' ) ) ?: '#3b82f6';
-        $s['countdown_enabled'] = ! empty( wp_unslash( $_POST['countdown_enabled'] ?? '' ) );
+        $s['countdown_enabled'] = ! empty( sanitize_text_field( wp_unslash( $_POST['countdown_enabled'] ?? '' ) ) );
         $s['countdown_date']    = sanitize_text_field( wp_unslash( $_POST['countdown_date'] ?? '' ) );
         $s['social_twitter']    = esc_url_raw( wp_unslash( $_POST['social_twitter']  ?? '' ) );
         $s['social_facebook']   = esc_url_raw( wp_unslash( $_POST['social_facebook'] ?? '' ) );

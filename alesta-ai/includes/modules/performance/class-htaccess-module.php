@@ -336,7 +336,7 @@ class Alesta_AI_Htaccess_Module {
         check_ajax_referer('alesta_ai_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Accès refusé.');
 
-        $remove = !empty(wp_unslash($_POST['remove'] ?? ''));
+        $remove = ! empty( sanitize_text_field( wp_unslash( $_POST['remove'] ?? '' ) ) );
         $marker = 'Alesta-WWW';
 
         if ($remove) {
