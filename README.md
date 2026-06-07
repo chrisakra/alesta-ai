@@ -11,7 +11,7 @@ en **2 plugins WordPress distincts qui cohabitent** :
 ```
 wp-content/plugins/
 ├── alesta-ai/         ← FREE, distribué sur wordpress.org
-└── alesta-ai-pro/     ← PRO, distribué via Freemius / Galiance
+└── alesta-ai-pro/     ← PRO, distribué via GitHub Releases / Galiance Cockpit
                           Header: "Requires Plugins: alesta-ai"
 ```
 
@@ -49,7 +49,7 @@ Pour chacun des **17 modules PRO** identifiés par l'audit :
 Pour chacun des **27 modules FREE** :
 1. Copier depuis l'ancien Free 1.2.2 ET/OU depuis le Pro (les versions Pro sont plus à jour)
 2. Renamespacer en `\AlestaAI\Modules\...`
-3. Retirer les références à `Alesta_AI_API` / Freemius
+3. Retirer les références à `Alesta_AI_API` (ancien système)
 4. Ajouter les hooks d'injection (`do_action('alesta_ai/admin/X/actions')`)
 5. Enregistrer dans `includes/modules/index.php`
 
@@ -61,7 +61,7 @@ Pour chacun des **4 modules SPLIT** (redirects, scripts, perf-audit, filenames) 
 - Script `Migration_2_0_0` pour les sites existants
 - Update `lib/alesta/activation.ts` côté Galiance Cockpit (install free + install pro)
 - Test sur 2-3 sites Galiance, monitoring 7 jours
-- Push wp.org pour le Free + Freemius pour le Pro
+- Push wp.org pour le Free + GitHub Releases / Galiance Cockpit pour le Pro
 
 ---
 
@@ -102,7 +102,7 @@ Voir audit complet dans la conversation Galiance Cockpit (sub-agent général-pu
 - Stockage : `wp_options['alesta_ai_quota_used_YYYY-MM']`
 
 ### Sécurité
-- Aucun code Freemius dans le Free (interdit wp.org)
+- Aucun système de licence externe dans le Free (BYOK Anthropic, conforme wp.org)
 - Pas de clé API hardcodée
 - `_doing_it_wrong()` pour les violations du contrat d'API
 - Capability custom `manage_alesta_ai` (mapping rôles via module `roles`)

@@ -35,6 +35,9 @@ final class KeywordsAIModule {
 	private const ASSET_HANDLE = 'alesta-ai-pro-keywords';
 
 	public function __construct() {
+		// Page admin dédiée sous le menu principal Alesta AI
+		add_action( 'admin_menu', [ $this, 'register_admin_page' ] );
+
 		// Injection UI : ajoute le bouton "Suggérer via IA" dans la page admin
 		// d'un module Free (ex. sitemap, posts editor metabox SEO, etc.)
 		add_action( 'alesta_ai/admin/seo-sitemap/actions', [ $this, 'render_inject_button' ] );
@@ -49,6 +52,144 @@ final class KeywordsAIModule {
 		// est déclenché à la volée par render_inject_button() (seulement quand
 		// le bouton est réellement rendu, pour 0 impact sur les autres pages).
 		add_action( 'admin_enqueue_scripts', [ $this, 'register_assets' ] );
+	}
+
+	// =========================================================================
+	// PAGE ADMIN DÉDIÉE
+	// =========================================================================
+
+	public function register_admin_page(): void {
+		add_submenu_page(
+			'alesta-ai',
+			'Keywords AI',
+			'Keywords AI',
+			'manage_alesta_ai',
+			'alesta-ai-keywords-ai',
+			[ $this, 'render_page' ]
+		);
+	}
+
+	public function render_page(): void {
+		$settings = get_option( 'alesta_ai_keywords_ai_settings', $this->default_settings() );
+
+		if (
+			isset( $_POST['alesta_ai_keywords_ai_nonce'] ) &&
+			wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['alesta_ai_keywords_ai_nonce'] ) ), 'save_keywords_ai_settings' )
+		) {
+			$settings = $this->sanitize_settings( $_POST );
+			update_option( 'alesta_ai_keywords_ai_settings', $settings );
+			echo '<div class="notice notice-success is-dismissible"><p>Réglages enregistrés.</p></div>';
+		}
+
+		$model_options = [
+			'claude-3-5-haiku-20241022'  => 'Claude 3.5 Haiku (rapide, économique)',
+			'claude-3-5-sonnet-20241022' => 'Claude 3.5 Sonnet (équilibré)',
+			'claude-opus-4-5'            => 'Claude Opus 4.5 (puissant)',
+		];
+
+		$count_options = [ 5, 10, 15, 20 ];
+		?>
+		<div class="wrap">
+			<h1>Keywords AI <span style="display:inline-block;background:#dbeafe;color:#1e3a5f;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;vertical-align:middle;letter-spacing:.3px;text-transform:uppercase;margin-left:8px;border:1px solid #1e3a5f;">SOLO</span></h1>
+			<p class="description" style="max-width:720px;">Génère automatiquement des keywords sémantiques via Claude (Anthropic) pour booster le référencement de vos pages et articles WordPress.</p>
+			<hr/>
+			<form method="post">
+				<?php wp_nonce_field( 'save_keywords_ai_settings', 'alesta_ai_keywords_ai_nonce' ); ?>
+				<table class="form-table">
+					<tbody>
+						<tr>
+							<th scope="row"><label for="enabled">Activer le module</label></th>
+							<td>
+								<label>
+									<input type="checkbox" name="enabled" id="enabled" value="1" <?php checked( ! empty( $settings['enabled'] ) ); ?> />
+									Active le bouton "Suggérer keywords IA" dans les pages du module SEO
+								</label>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="claude_model">Modèle Claude</label></th>
+							<td>
+								<select name="claude_model" id="claude_model">
+									<?php foreach ( $model_options as $val => $label ) : ?>
+										<option value="<?php echo esc_attr( $val ); ?>" <?php selected( $settings['claude_model'], $val ); ?>>
+											<?php echo esc_html( $label ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<p class="description">Haiku est recommandé pour un usage quotidien intensif (coût réduit).</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="keywords_count">Nombre de keywords générés</label></th>
+							<td>
+								<select name="keywords_count" id="keywords_count">
+									<?php foreach ( $count_options as $n ) : ?>
+										<option value="<?php echo esc_attr( $n ); ?>" <?php selected( (int) $settings['keywords_count'], $n ); ?>>
+											<?php echo esc_html( $n ); ?> keywords
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<p class="description">Mix automatique entre mots-clés larges et long-tail (3-5 mots).</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="prompt_extra">Instructions personnalisées (optionnel)</label></th>
+							<td>
+								<textarea name="prompt_extra" id="prompt_extra" rows="3" cols="60" class="large-text"><?php echo esc_textarea( $settings['prompt_extra'] ); ?></textarea>
+								<p class="description">Ajoutez des contraintes métier au prompt Claude. Ex : "uniquement des keywords en lien avec le secteur juridique" ou "en anglais".</p>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<?php submit_button(); ?>
+			</form>
+
+			<hr/>
+			<h2>Comment ça marche</h2>
+			<ol>
+				<li><strong>Activez le module</strong> via la case ci-dessus et assurez-vous que votre clé Anthropic est configurée.</li>
+				<li><strong>Ouvrez une page ou un article</strong> WordPress (ou la page Sitemap de Alesta AI SEO Free).</li>
+				<li><strong>Cliquez sur "Suggérer keywords IA"</strong> dans la section Alesta AI Pro qui apparaît en bas du module SEO.</li>
+				<li><strong>Claude analyse le contenu</strong> de la page et génère une liste de keywords sémantiquement pertinents, incluant des mots-clés larges et des long-tail ciblés.</li>
+				<li><strong>Copiez et intégrez</strong> les keywords dans vos balises meta, titres H2/H3, ou votre outil SEO favori.</li>
+			</ol>
+
+			<h2>Statut Claude API</h2>
+			<p>Ce module utilise <code>Claude</code> (Anthropic) via le provider Pro Addon.
+			Vérifiez que votre clé API est configurée dans <a href="<?php echo esc_url( admin_url( 'admin.php?page=alesta-ai-api-keys' ) ); ?>">Réglages → Clés API</a>.</p>
+		</div>
+		<?php
+	}
+
+	private function default_settings(): array {
+		return [
+			'enabled'        => false,
+			'claude_model'   => 'claude-3-5-haiku-20241022',
+			'keywords_count' => 10,
+			'prompt_extra'   => '',
+		];
+	}
+
+	private function sanitize_settings( array $input ): array {
+		$allowed_models = [
+			'claude-3-5-haiku-20241022',
+			'claude-3-5-sonnet-20241022',
+			'claude-opus-4-5',
+		];
+		$model = isset( $input['claude_model'] ) ? sanitize_text_field( $input['claude_model'] ) : 'claude-3-5-haiku-20241022';
+		if ( ! in_array( $model, $allowed_models, true ) ) {
+			$model = 'claude-3-5-haiku-20241022';
+		}
+		$count = isset( $input['keywords_count'] ) ? (int) $input['keywords_count'] : 10;
+		if ( ! in_array( $count, [ 5, 10, 15, 20 ], true ) ) {
+			$count = 10;
+		}
+		return [
+			'enabled'        => ! empty( $input['enabled'] ),
+			'claude_model'   => $model,
+			'keywords_count' => $count,
+			'prompt_extra'   => isset( $input['prompt_extra'] ) ? sanitize_textarea_field( $input['prompt_extra'] ) : '',
+		];
 	}
 
 	// =========================================================================

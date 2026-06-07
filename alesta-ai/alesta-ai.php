@@ -3,7 +3,7 @@
  * Plugin Name:       Alesta AI
  * Plugin URI:        https://alesta-ai.com/
  * Description:       WordPress optimization toolkit — SEO, performance, security, GDPR, reviews and analytics. Foundation for the Alesta AI Pro extension.
- * Version:           2.0.13
+ * Version:           2.0.14
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Christian EL DEBS (Alesta Computer)
@@ -47,7 +47,7 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_VERSION', '2.0.13' );
+define( 'ALESTA_AI_VERSION', '2.0.14' );
 
 /**
  * Icône du menu admin Alesta AI — SVG inline avec lettre grecque φ (phi),

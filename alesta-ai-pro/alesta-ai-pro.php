@@ -3,7 +3,7 @@
  * Plugin Name:       Alesta AI Pro
  * Plugin URI:        https://alesta-ai.com/tarifs.html
  * Description:       Premium AI features for Alesta AI — Claude-powered content generation, SEO automation, image AI and more. Requires Alesta AI (free).
- * Version:           2.0.13
+ * Version:           2.0.14
  * Requires at least: 6.5
  * Requires PHP:      7.4
  * Requires Plugins:  alesta-ai
@@ -41,7 +41,7 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_PRO_VERSION', '2.0.13' );
+define( 'ALESTA_AI_PRO_VERSION', '2.0.14' );
 define( 'ALESTA_AI_PRO_FILE',    __FILE__ );
 define( 'ALESTA_AI_PRO_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'ALESTA_AI_PRO_URL',     plugin_dir_url( __FILE__ ) );
@@ -152,21 +152,25 @@ add_action( 'alesta_ai/loaded', function () {
 	$registry->register_pro( 'seo/keywords-ai', \AlestaAIPro\Modules\Seo\KeywordsAIModule::class, [
 		'name' => 'Keywords AI', 'category' => 'seo', 'icon' => 'admin-network',
 		'description' => 'Génération de keywords sémantiques via Claude',
+		'tier' => 'solo',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/seo/class-meta-ai-module.php';
 	$registry->register_pro( 'seo/meta-ai', \AlestaAIPro\Modules\Seo\MetaAIModule::class, [
 		'name' => 'Meta AI', 'category' => 'seo', 'icon' => 'edit',
 		'description' => 'Génère titles + meta descriptions optimisés via Claude',
+		'tier' => 'solo',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/seo/class-schema-ai-module.php';
 	$registry->register_pro( 'seo/schema-ai', \AlestaAIPro\Modules\Seo\SchemaAIModule::class, [
 		'name' => 'Schema.org IA', 'category' => 'seo', 'icon' => 'editor-code',
 		'description' => 'JSON-LD Schema.org enrichi par Claude (Article, Product, FAQ, HowTo)',
+		'tier' => 'pro',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/seo/class-faq-ai-module.php';
 	$registry->register_pro( 'seo/faq-ai', \AlestaAIPro\Modules\Seo\FaqAIModule::class, [
 		'name' => 'FAQ IA', 'category' => 'seo', 'icon' => 'editor-help',
 		'description' => '5-10 Q/R pertinentes via Claude + JSON-LD FAQPage',
+		'tier' => 'solo',
 	] );
 
 	// CONTENT (2 modules pilotes)
@@ -174,11 +178,13 @@ add_action( 'alesta_ai/loaded', function () {
 	$registry->register_pro( 'content/improve', \AlestaAIPro\Modules\Content\ImproveModule::class, [
 		'name' => 'Améliorer texte IA', 'category' => 'content', 'icon' => 'edit-large',
 		'description' => 'Sidebar Gutenberg avec actions Améliorer/Simplifier/Résumer/Étendre',
+		'tier' => 'solo',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/content/class-summaries-module.php';
 	$registry->register_pro( 'content/summaries', \AlestaAIPro\Modules\Content\SummariesModule::class, [
 		'name' => 'Résumés auto', 'category' => 'content', 'icon' => 'media-text',
 		'description' => 'TL;DR auto en début de post long, cacheé en post_meta',
+		'tier' => 'solo',
 	] );
 
 	// SEO additionnels (3)
@@ -186,16 +192,19 @@ add_action( 'alesta_ai/loaded', function () {
 	$registry->register_pro( 'seo/ai-metadata', \AlestaAIPro\Modules\Seo\AiMetadataModule::class, [
 		'name' => 'AI Metadata', 'category' => 'seo', 'icon' => 'admin-customizer',
 		'description' => 'OG, Twitter Cards, schema.org, alt text via Claude',
+		'tier' => 'solo',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/seo/class-duplicates-ai-module.php';
 	$registry->register_pro( 'seo/duplicates', \AlestaAIPro\Modules\Seo\DuplicatesAIModule::class, [
 		'name' => 'Détection duplicates SEO', 'category' => 'seo', 'icon' => 'admin-page',
 		'description' => 'Détection IA contenus similaires + suggestions canonical/merge',
+		'tier' => 'solo',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/seo/class-llms-txt-ai-module.php';
 	$registry->register_pro( 'seo/llms-txt', \AlestaAIPro\Modules\Seo\LlmsTxtAIModule::class, [
 		'name' => 'LLMs.txt AI', 'category' => 'seo', 'icon' => 'text',
 		'description' => 'llms.txt enrichi par Claude (descriptions + hiérarchie pages)',
+		'tier' => 'solo',
 	] );
 
 	// CONTENT additionnels (5)
@@ -203,26 +212,31 @@ add_action( 'alesta_ai/loaded', function () {
 	$registry->register_pro( 'content/editorial', \AlestaAIPro\Modules\Content\EditorialModule::class, [
 		'name' => 'Calendrier éditorial', 'category' => 'content', 'icon' => 'calendar-alt',
 		'description' => 'Idées d\'articles IA basées sur tendances + gaps SEO',
+		'tier' => 'solo',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/content/class-chatbot-module.php';
 	$registry->register_pro( 'content/chatbot', \AlestaAIPro\Modules\Content\ChatbotModule::class, [
 		'name' => 'Chatbot Claude', 'category' => 'content', 'icon' => 'format-chat',
 		'description' => 'Widget chatbot frontend qui répond aux visiteurs',
+		'tier' => 'pro',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/content/class-comments-module.php';
 	$registry->register_pro( 'content/comments', \AlestaAIPro\Modules\Content\CommentsModule::class, [
 		'name' => 'Modération commentaires', 'category' => 'content', 'icon' => 'admin-comments',
 		'description' => 'Filtre spam/toxic + suggestions de réponse via Claude',
+		'tier' => 'pro',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/content/class-tags-module.php';
 	$registry->register_pro( 'content/tags', \AlestaAIPro\Modules\Content\TagsModule::class, [
 		'name' => 'Tags AI suggestions', 'category' => 'content', 'icon' => 'tag',
 		'description' => 'Suggère les meilleurs tags WordPress par post via Claude',
+		'tier' => 'solo',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/content/class-translation-module.php';
 	$registry->register_pro( 'content/translation', \AlestaAIPro\Modules\Content\TranslationModule::class, [
 		'name' => 'Traduction 20 langues', 'category' => 'content', 'icon' => 'translation',
 		'description' => 'Traduction automatique posts/pages via Claude',
+		'tier' => 'pro',
 	] );
 
 	// MEDIA (1 module SPLIT — couche IA)
@@ -230,6 +244,7 @@ add_action( 'alesta_ai/loaded', function () {
 	$registry->register_pro( 'media/filenames-ai', \AlestaAIPro\Modules\Media\FilenamesAIModule::class, [
 		'name' => 'Filenames AI', 'category' => 'media', 'icon' => 'format-image',
 		'description' => 'Suggère 3 noms SEO par image via Claude vision',
+		'tier' => 'solo',
 	] );
 
 	// PERFORMANCE (2 modules SPLIT — couches IA)
@@ -237,11 +252,13 @@ add_action( 'alesta_ai/loaded', function () {
 	$registry->register_pro( 'performance/redirects-ai', \AlestaAIPro\Modules\Performance\RedirectsAIModule::class, [
 		'name' => 'Redirections IA', 'category' => 'performance', 'icon' => 'redo',
 		'description' => 'Suggère redirect 301 cible quand 404 détecté',
+		'tier' => 'solo',
 	] );
 	require_once ALESTA_AI_PRO_DIR . 'includes/modules-pro/performance/class-perf-audit-ai-module.php';
 	$registry->register_pro( 'performance/perf-audit-ai', \AlestaAIPro\Modules\Performance\PerfAuditAIModule::class, [
 		'name' => 'Audit perf priorisé IA', 'category' => 'performance', 'icon' => 'performance',
 		'description' => 'Top 3 actions à plus fort impact via Claude',
+		'tier' => 'solo',
 	] );
 
 	// REPORTS (1)
@@ -249,6 +266,7 @@ add_action( 'alesta_ai/loaded', function () {
 	$registry->register_pro( 'reports/pdf', \AlestaAIPro\Modules\Reports\PdfReportModule::class, [
 		'name' => 'Rapports PDF mensuels', 'category' => 'reports', 'icon' => 'pdf',
 		'description' => 'PDF mensuel SEO/perf/sécu + synthèse exécutive IA',
+		'tier' => 'pro',
 	] );
 
 	// 5. Injection UI dans les modules SPLIT du Free.

@@ -28,6 +28,7 @@ $registry->register( 'seo/sitemap', \AlestaAI\Modules\Seo\Sitemap::class, [
 	'description' => 'Génération automatique du sitemap.xml (posts, pages, taxonomies).',
 	'category'    => 'seo',
 	'icon'        => 'sitemap',
+	'tier'        => 'free',
 ] );
 
 // =============================================================================
@@ -37,16 +38,19 @@ require_once ALESTA_AI_DIR . 'includes/modules/performance/class-htaccess.php';
 $registry->register( 'performance/htaccess', \AlestaAI\Modules\Performance\Htaccess::class, [
 	'name' => '.htaccess editor', 'category' => 'performance', 'icon' => 'admin-tools',
 	'description' => 'Cache navigateur, GZIP, sécurité HTTPS, WebP rewrite.',
+	'tier' => 'free',
 ] );
 require_once ALESTA_AI_DIR . 'includes/modules/performance/class-minify.php';
 $registry->register( 'performance/minify', \AlestaAI\Modules\Performance\Minify::class, [
 	'name' => 'Minify HTML/CSS/JS', 'category' => 'performance', 'icon' => 'editor-code',
 	'description' => 'Minification HTML, combine CSS/JS, défer scripts.',
+	'tier' => 'free',
 ] );
 require_once ALESTA_AI_DIR . 'includes/modules/performance/class-db-cleaner.php';
 $registry->register( 'performance/db-cleaner', \AlestaAI\Modules\Performance\DbCleaner::class, [
 	'name' => 'DB Cleaner', 'category' => 'performance', 'icon' => 'database',
 	'description' => 'Nettoyage hebdo : révisions, transients, spam/trash, drafts orphelins.',
+	'tier' => 'free',
 ] );
 // TODO Phase S3 : fonts, errors, maintenance, debug, health, cwv, search-replace, redirects-core, scripts-core, perf-audit-core
 
@@ -57,16 +61,19 @@ require_once ALESTA_AI_DIR . 'includes/modules/security/class-rgpd.php';
 $registry->register( 'security/rgpd', \AlestaAI\Modules\Security\Rgpd::class, [
 	'name' => 'RGPD — Bannière cookies', 'category' => 'security', 'icon' => 'shield',
 	'description' => 'Bannière de consentement personnalisable, conforme RGPD/CNIL.',
+	'tier' => 'free',
 ] );
 require_once ALESTA_AI_DIR . 'includes/modules/security/class-brute-force.php';
 $registry->register( 'security/brute-force', \AlestaAI\Modules\Security\BruteForce::class, [
 	'name' => 'Brute Force Protection', 'category' => 'security', 'icon' => 'lock',
 	'description' => 'Rate limit login : max 5 tentatives / 15 min / IP, ban automatique.',
+	'tier' => 'free',
 ] );
 require_once ALESTA_AI_DIR . 'includes/modules/security/class-security-audit.php';
 $registry->register( 'security/audit', \AlestaAI\Modules\Security\SecurityAudit::class, [
 	'name' => 'Security Audit', 'category' => 'security', 'icon' => 'shield-alt',
 	'description' => 'Checklist audit sécurité WordPress (file perms, WP_DEBUG, user admin, DB prefix).',
+	'tier' => 'solo',
 ] );
 // =============================================================================
 // MEDIA (1 module Free)
@@ -75,6 +82,7 @@ require_once ALESTA_AI_DIR . 'includes/modules/media/class-webp.php';
 $registry->register( 'media/webp', \AlestaAI\Modules\Media\Webp::class, [
 	'name' => 'WebP — Conversion images', 'category' => 'media', 'icon' => 'format-image',
 	'description' => 'Conversion automatique JPEG/PNG → WebP via GD/Imagick + rewrite rules.',
+	'tier' => 'solo',
 ] );
 // TODO Phase S3 : activity, login-bot, updates (security)
 
@@ -110,6 +118,7 @@ $registry->register( 'settings/alerts', \AlestaAI\Modules\Settings\Alerts::class
 	'description' => 'Notifications email automatiques : site down, SSL expire, disk full, brute-force.',
 	'category'    => 'settings',
 	'icon'        => 'megaphone',
+	'tier'        => 'pro',
 ] );
 // TODO Phase S3 : roles
 
