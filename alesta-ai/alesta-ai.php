@@ -3,7 +3,7 @@
  * Plugin Name:       Alesta AI
  * Plugin URI:        https://alesta-ai.com/
  * Description:       WordPress optimization toolkit — SEO, performance, security, GDPR, reviews and analytics. Foundation for the Alesta AI Pro extension.
- * Version:           2.0.9
+ * Version:           2.0.10
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Christian EL DEBS (Alesta Computer)
@@ -47,7 +47,7 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_VERSION', '2.0.9' );
+define( 'ALESTA_AI_VERSION', '2.0.10' );
 define( 'ALESTA_AI_FILE',    __FILE__ );
 define( 'ALESTA_AI_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'ALESTA_AI_URL',     plugin_dir_url( __FILE__ ) );
@@ -166,6 +166,78 @@ add_action( 'admin_menu', function () {
 		$submenu['alesta-ai'][0][0] = __( 'Tableau de bord', 'alesta-ai' );
 	}
 }, 5 );
+
+/**
+ * Patch des labels du sous-menu Alesta AI pour injecter les pills "Pro" orange
+ * (style v1.2.x originel #e8890c) à côté du nom des modules Pro.
+ *
+ * Priorité 9999 = exécuté APRÈS tous les modules qui ont fait add_submenu_page
+ * (priorité 10 par défaut). On parcourt $submenu['alesta-ai'] et on identifie
+ * chaque entrée dont le page-slug correspond à un module registered comme
+ * source='pro' dans ModuleRegistry. Le label se voit append un <span> pill.
+ *
+ * Le CSS associé est injecté via admin_head ci-dessous (toujours visible côté
+ * wp-admin, pas seulement sur la page Alesta AI).
+ */
+add_action( 'admin_menu', function () {
+	global $submenu;
+	if ( empty( $submenu['alesta-ai'] ) ) {
+		return;
+	}
+	$registry = \AlestaAI\Core\ModuleRegistry::instance();
+	$pro_modules = $registry->all( [ 'source' => 'pro' ] );
+
+	// Index : page-slug -> est-Pro. Construit selon la convention
+	// "page = alesta-ai-{short_slug}" appliquée par les modules.
+	$pro_slugs = [];
+	foreach ( $pro_modules as $slug => $entry ) {
+		$short_slug = preg_replace( '#^.+/#', '', $slug );
+		$pro_slugs[ 'alesta-ai-' . str_replace( '/', '-', $short_slug ) ] = true;
+	}
+
+	foreach ( $submenu['alesta-ai'] as $i => $item ) {
+		$page = $item[2] ?? '';
+		if ( isset( $pro_slugs[ $page ] ) ) {
+			$submenu['alesta-ai'][ $i ][0] .= ' <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>';
+		}
+	}
+}, 9999 );
+
+/**
+ * Injecte le CSS des pills sidebar dans toutes les pages wp-admin (le menu
+ * Alesta AI est rendu partout, donc le CSS doit être présent partout).
+ *
+ * Couleur reprise de v1.2.x : orange Alesta #e8890c. Cohérent avec la
+ * charte historique du plugin (avant migration v2.0). Volontairement
+ * minimal pour ne pas alourdir wp-admin — scopé strictement à #adminmenu.
+ */
+add_action( 'admin_head', function () {
+	?>
+	<style>
+		/* Pills "Pro" injectées dans les labels des modules Pro (sidebar) */
+		#adminmenu .alesta-pro-pill {
+			display: inline-block;
+			font-size: 9px;
+			font-weight: 700;
+			padding: 1px 6px;
+			margin-left: 6px;
+			border-radius: 4px;
+			vertical-align: middle;
+			line-height: 1.5;
+			letter-spacing: .3px;
+			background: #fff3e0;
+			color: #7c3d00;
+			border: 1px solid #e8890c;
+			text-transform: uppercase;
+		}
+		#adminmenu .alesta-pro-pill--pro {
+			background: #e8890c;
+			color: #fff;
+			border-color: #e8890c;
+		}
+	</style>
+	<?php
+} );
 
 /**
  * Rendu de la page d'accueil "Alesta AI" dans wp-admin.
@@ -344,11 +416,13 @@ function alesta_ai_render_dashboard_page(): void {
 			}
 			.alesta-wrap .amc-badge-pro {
 				display: inline-block;
-				background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+				background: #e8890c;
 				color: #fff; font-size: 9.5px;
-				padding: 1px 7px; border-radius: 999px;
-				font-weight: 700; letter-spacing: .04em;
+				padding: 1px 7px; border-radius: 4px;
+				font-weight: 700; letter-spacing: .3px;
 				margin-left: 4px; vertical-align: middle;
+				border: 1px solid #e8890c;
+				text-transform: uppercase;
 			}
 		</style>
 
