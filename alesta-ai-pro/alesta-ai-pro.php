@@ -3,7 +3,7 @@
  * Plugin Name:       Alesta AI Pro
  * Plugin URI:        https://alesta-ai.com/tarifs.html
  * Description:       Premium AI features for Alesta AI — Claude-powered content generation, SEO automation, image AI and more. Requires Alesta AI (free).
- * Version:           2.0.8
+ * Version:           2.0.9
  * Requires at least: 6.5
  * Requires PHP:      7.4
  * Requires Plugins:  alesta-ai
@@ -41,7 +41,7 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_PRO_VERSION', '2.0.8' );
+define( 'ALESTA_AI_PRO_VERSION', '2.0.9' );
 define( 'ALESTA_AI_PRO_FILE',    __FILE__ );
 define( 'ALESTA_AI_PRO_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'ALESTA_AI_PRO_URL',     plugin_dir_url( __FILE__ ) );

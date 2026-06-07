@@ -3,7 +3,7 @@
  * Plugin Name:       Alesta AI
  * Plugin URI:        https://alesta-ai.com/
  * Description:       WordPress optimization toolkit — SEO, performance, security, GDPR, reviews and analytics. Foundation for the Alesta AI Pro extension.
- * Version:           2.0.8
+ * Version:           2.0.9
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Christian EL DEBS (Alesta Computer)
@@ -47,7 +47,7 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_VERSION', '2.0.8' );
+define( 'ALESTA_AI_VERSION', '2.0.9' );
 define( 'ALESTA_AI_FILE',    __FILE__ );
 define( 'ALESTA_AI_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'ALESTA_AI_URL',     plugin_dir_url( __FILE__ ) );
@@ -189,22 +189,21 @@ function alesta_ai_render_dashboard_page(): void {
 	$pro_count  = count( $registry->all( [ 'source' => 'pro' ] ) );
 	$pro_active = $pro_count > 0;
 
-	// Libellés et ordre des catégories. Modules sans catégorie connue tombent
-	// dans "Autres" en fin de page (rare en pratique).
-	$cat_labels = [
-		'seo'           => __( 'SEO & Référencement', 'alesta-ai' ),
-		'content'       => __( 'Contenu & Rédaction', 'alesta-ai' ),
-		'performance'   => __( 'Performance', 'alesta-ai' ),
-		'security'      => __( 'Sécurité & GDPR', 'alesta-ai' ),
-		'media'         => __( 'Médias & Images', 'alesta-ai' ),
-		'reports'       => __( 'Rapports & Audits', 'alesta-ai' ),
-		'communication' => __( 'Communication & IA', 'alesta-ai' ),
-		'settings'      => __( 'Réglages avancés', 'alesta-ai' ),
-		'other'         => __( 'Autres', 'alesta-ai' ),
+	// --- Catégories : libellé + numéro de section + emoji d'icône fallback ---
+	$cat_meta = [
+		'seo'           => [ 'label' => __( 'SEO & Référencement', 'alesta-ai' ),  'desc' => __( 'Optimisation on-page, balises, mots-clés, données structurées, visibilité IA', 'alesta-ai' ),  'fallback_icon' => '📝' ],
+		'content'       => [ 'label' => __( 'Contenu & Rédaction', 'alesta-ai' ),  'desc' => __( 'Génération, amélioration et traduction de contenu via IA', 'alesta-ai' ),                  'fallback_icon' => '✍️' ],
+		'performance'   => [ 'label' => __( 'Performance', 'alesta-ai' ),          'desc' => __( 'Cache, minification, base de données, Core Web Vitals', 'alesta-ai' ),                  'fallback_icon' => '⚡' ],
+		'security'      => [ 'label' => __( 'Sécurité & GDPR', 'alesta-ai' ),      'desc' => __( 'Brute-force, RGPD, audit sécurité, bannière cookies', 'alesta-ai' ),                    'fallback_icon' => '🛡️' ],
+		'media'         => [ 'label' => __( 'Médias & Images', 'alesta-ai' ),      'desc' => __( 'Conversion WebP, optimisation, alt text IA, nommage', 'alesta-ai' ),                    'fallback_icon' => '🖼️' ],
+		'reports'       => [ 'label' => __( 'Rapports & Audits', 'alesta-ai' ),    'desc' => __( 'Synthèses PDF mensuelles, audits priorisés par IA', 'alesta-ai' ),                      'fallback_icon' => '📊' ],
+		'communication' => [ 'label' => __( 'Communication & IA', 'alesta-ai' ),   'desc' => __( 'Chatbot front-end, modération commentaires IA', 'alesta-ai' ),                          'fallback_icon' => '💬' ],
+		'settings'      => [ 'label' => __( 'Réglages avancés', 'alesta-ai' ),     'desc' => __( 'Alertes, rôles, paramètres globaux', 'alesta-ai' ),                                     'fallback_icon' => '⚙️' ],
+		'other'         => [ 'label' => __( 'Autres', 'alesta-ai' ),               'desc' => __( 'Modules sans catégorie principale', 'alesta-ai' ),                                      'fallback_icon' => '🔧' ],
 	];
 
-	// Regroupe les modules par catégorie, en conservant l'ordre des libellés.
-	$grouped = array_fill_keys( array_keys( $cat_labels ), [] );
+	// Regroupe les modules par catégorie, dans l'ordre $cat_meta
+	$grouped = array_fill_keys( array_keys( $cat_meta ), [] );
 	foreach ( $all as $slug => $entry ) {
 		$cat = $entry['meta']['category'] ?? 'other';
 		if ( ! isset( $grouped[ $cat ] ) ) {
@@ -213,65 +212,329 @@ function alesta_ai_render_dashboard_page(): void {
 		$grouped[ $cat ][ $slug ] = $entry;
 	}
 
+	// --- Données cockpit (lecture WP standard, dispo côté Free) ---
+	$wp_version       = get_bloginfo( 'version' );
+	$php_version      = PHP_VERSION;
+	$wp_ok            = version_compare( $wp_version, '6.4', '>=' );
+	$php_ok           = version_compare( $php_version, '8.0', '>=' );
+	$is_https         = strpos( (string) get_option( 'siteurl', '' ), 'https://' ) === 0;
+	$update_plugins   = get_site_transient( 'update_plugins' );
+	$plugins_pending  = is_object( $update_plugins ) && ! empty( $update_plugins->response ) ? count( $update_plugins->response ) : 0;
+	$update_themes    = get_site_transient( 'update_themes' );
+	$themes_pending   = is_object( $update_themes ) && ! empty( $update_themes->response ) ? count( $update_themes->response ) : 0;
+	$pending_updates  = $plugins_pending + $themes_pending;
+	$total_posts      = (int) wp_count_posts( 'post' )->publish;
+	$total_pages      = (int) wp_count_posts( 'page' )->publish;
+	$total_content    = $total_posts + $total_pages;
+	$total_images     = (int) wp_count_posts( 'attachment' )->inherit;
+	$llms_exists      = file_exists( trailingslashit( ABSPATH ) . 'llms.txt' );
+	$robots_exists    = file_exists( trailingslashit( ABSPATH ) . 'robots.txt' );
+
 	?>
-	<div class="wrap">
-		<h1><?php esc_html_e( 'Alesta AI', 'alesta-ai' ); ?></h1>
-		<p class="description" style="max-width: 720px;">
-			<?php esc_html_e( 'Toolkit WordPress modulaire — SEO, performance, sécurité, GDPR, analytics. Extension Pro optionnelle propulsée par Claude (Anthropic).', 'alesta-ai' ); ?>
-		</p>
+	<div class="wrap alesta-wrap">
+		<style>
+			.alesta-wrap { max-width: 1280px; padding-right: 20px; }
+			.alesta-wrap .alesta-cockpit-header {
+				display: flex; align-items: center; justify-content: space-between;
+				padding: 20px 26px;
+				background: linear-gradient(135deg, #1e3a5f 0%, #0f2440 100%);
+				border-radius: 10px; margin: 16px 0 20px;
+				flex-wrap: wrap; gap: 12px;
+			}
+			.alesta-wrap .alesta-cockpit-logo {
+				display: flex; align-items: center; gap: 14px;
+			}
+			.alesta-wrap .alesta-cockpit-icon {
+				display: inline-flex; align-items: center; justify-content: center;
+				width: 50px; height: 50px;
+				background: rgba(255,255,255,.1); border-radius: 12px;
+				font-family: Georgia, serif; font-size: 36px; line-height: 1; color: #fff;
+			}
+			.alesta-wrap .alesta-cockpit-title { color: #fff; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+			.alesta-wrap .alesta-cockpit-sub   { color: #94a3b8; margin: 0; font-size: 13px; }
+			.alesta-wrap .alesta-badge {
+				font-size: 11px; padding: 3px 10px; border-radius: 20px;
+				background: rgba(255,255,255,.12); color: #cbd5e1;
+				border: 1px solid rgba(255,255,255,.18);
+			}
+			.alesta-wrap .alesta-badge.is-active { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+			.alesta-wrap .alesta-badge.is-warn   { background: #fef9c3; color: #713f12; border-color: #fcd34d; }
+			.alesta-wrap .alesta-badge.is-info   { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
 
-		<p>
-			<strong><?php echo (int) count( $all ); ?></strong>
-			<?php esc_html_e( 'modules chargés', 'alesta-ai' ); ?>
-			(<?php echo (int) $free_count; ?> <?php esc_html_e( 'Free', 'alesta-ai' ); ?><?php if ( $pro_count > 0 ) : ?> · <?php echo (int) $pro_count; ?> <?php esc_html_e( 'Pro', 'alesta-ai' ); ?><?php endif; ?>)
-			<?php if ( $pro_active ) : ?>
-				· <span style="color: #008a20;">✓ <?php esc_html_e( 'Extension Pro active', 'alesta-ai' ); ?></span>
-			<?php else : ?>
-				· <a href="https://alesta-ai.com/tarifs.html" target="_blank" rel="noopener"><?php esc_html_e( 'Découvrir Alesta AI Pro →', 'alesta-ai' ); ?></a>
-			<?php endif; ?>
-			· <code>v<?php echo esc_html( ALESTA_AI_VERSION ); ?><?php if ( defined( 'ALESTA_AI_PRO_VERSION' ) ) : ?> + <?php echo esc_html( ALESTA_AI_PRO_VERSION ); ?> Pro<?php endif; ?></code>
-		</p>
+			/* Cockpit panneaux */
+			.alesta-wrap .alesta-cockpit-grid {
+				display: grid; grid-template-columns: repeat(4, 1fr);
+				gap: 14px; margin-bottom: 24px;
+			}
+			.alesta-wrap .alesta-panel {
+				background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
+			}
+			.alesta-wrap .alesta-panel-head {
+				padding: 11px 16px; background: #f0f9ff;
+				border-bottom: 1px solid #bae6fd;
+				display: flex; align-items: center; gap: 8px;
+			}
+			.alesta-wrap .alesta-panel-head .dashicons {
+				color: #0ea5e9; font-size: 16px; width: 16px; height: 16px;
+			}
+			.alesta-wrap .alesta-panel-label {
+				font-weight: 700; font-size: 12px; color: #0369a1; letter-spacing: .3px;
+			}
+			.alesta-wrap .alesta-panel-body {
+				padding: 14px 16px;
+				display: flex; flex-direction: column; gap: 8px;
+				font-size: 12px;
+			}
+			.alesta-wrap .alesta-row {
+				display: flex; align-items: center; justify-content: space-between;
+			}
+			.alesta-wrap .alesta-row-label { color: #6b7280; }
+			.alesta-wrap .alesta-row-value { font-weight: 600; color: #111827; display: flex; align-items: center; gap: 5px; }
+			.alesta-wrap .alesta-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+			.alesta-wrap .alesta-dot.ok { background: #22c55e; }
+			.alesta-wrap .alesta-dot.warn { background: #f59e0b; }
+			.alesta-wrap .alesta-dot.err { background: #ef4444; }
 
-		<hr />
+			/* Section block (catalogue modules) */
+			.alesta-wrap .alesta-section-block {
+				margin-bottom: 1.5rem;
+				border: 1px solid #e5e7eb; border-radius: 12px;
+				overflow: hidden; background: #fff;
+			}
+			.alesta-wrap .alesta-section-heading {
+				display: flex; align-items: center; gap: 10px;
+				padding: 12px 20px;
+				background: #f8fafc; border-bottom: 1px solid #e5e7eb;
+				flex-wrap: wrap;
+			}
+			.alesta-wrap .alesta-section-num {
+				font-size: 10px; font-weight: 700; color: #6b7280;
+				font-family: monospace;
+				background: #e5e7eb; padding: 2px 6px; border-radius: 4px;
+				letter-spacing: .5px;
+			}
+			.alesta-wrap .alesta-section-title { font-size: 13px; font-weight: 600; color: #1e3a5f; }
+			.alesta-wrap .alesta-section-desc  { font-size: 12px; color: #9ca3af; }
 
-		<?php foreach ( $cat_labels as $cat_key => $cat_label ) : ?>
-			<?php
+			/* Module grid */
+			.alesta-wrap .alesta-cards {
+				display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+				background: #fff;
+			}
+			.alesta-wrap .alesta-module-card {
+				display: flex; flex-direction: column; gap: 6px;
+				padding: 28px 18px 16px 18px;
+				border-right: 1px solid #f3f4f6;
+				border-bottom: 1px solid #f3f4f6;
+				background: #fff;
+				position: relative;
+				transition: background-color .12s ease-out;
+			}
+			.alesta-wrap .alesta-module-card:hover { background: #fafafa; }
+			.alesta-wrap .alesta-module-active { border-top: 3px solid #1e3a5f; }
+			.alesta-wrap .amc-icon { font-size: 22px; line-height: 1; margin-bottom: 2px; }
+			.alesta-wrap .amc-name { font-size: 13px; font-weight: 600; color: #111827; }
+			.alesta-wrap .amc-desc { font-size: 11px; color: #6b7280; line-height: 1.5; flex: 1; }
+			.alesta-wrap .amc-footer { margin-top: 6px; display: flex; gap: 6px; }
+			.alesta-wrap .amc-status {
+				position: absolute; top: 10px; right: 12px;
+				font-size: 10px; font-weight: 600;
+				padding: 2px 8px; border-radius: 999px;
+				background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7;
+			}
+			.alesta-wrap .amc-badge-pro {
+				display: inline-block;
+				background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+				color: #fff; font-size: 9.5px;
+				padding: 1px 7px; border-radius: 999px;
+				font-weight: 700; letter-spacing: .04em;
+				margin-left: 4px; vertical-align: middle;
+			}
+		</style>
+
+		<!-- ═══════════════════════════════════════════════════════════
+		     COCKPIT HEADER
+		══════════════════════════════════════════════════════════════ -->
+		<div class="alesta-cockpit-header">
+			<div class="alesta-cockpit-logo">
+				<span class="alesta-cockpit-icon">&#x03C6;</span>
+				<div>
+					<h1 class="alesta-cockpit-title">Master AI Dashboard</h1>
+					<p class="alesta-cockpit-sub"><?php esc_html_e( 'Cockpit central — santé, modules, sécurité et visibilité IA en un seul écran', 'alesta-ai' ); ?></p>
+				</div>
+			</div>
+			<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+				<span class="alesta-badge"><?php echo esc_html( 'v' . ALESTA_AI_VERSION ); ?><?php if ( defined( 'ALESTA_AI_PRO_VERSION' ) ) : ?> + <?php echo esc_html( ALESTA_AI_PRO_VERSION ); ?> Pro<?php endif; ?></span>
+				<?php if ( $pro_active ) : ?>
+					<span class="alesta-badge is-active"><?php esc_html_e( '✓ Extension Pro active', 'alesta-ai' ); ?></span>
+				<?php else : ?>
+					<span class="alesta-badge is-info"><?php esc_html_e( 'Free seul', 'alesta-ai' ); ?></span>
+				<?php endif; ?>
+			</div>
+		</div>
+
+		<!-- ═══════════════════════════════════════════════════════════
+		     COCKPIT 4 PANNEAUX
+		══════════════════════════════════════════════════════════════ -->
+		<div class="alesta-cockpit-grid">
+			<!-- Santé du site -->
+			<div class="alesta-panel">
+				<div class="alesta-panel-head">
+					<span class="dashicons dashicons-heart" aria-hidden="true"></span>
+					<span class="alesta-panel-label"><?php esc_html_e( 'SANTÉ DU SITE', 'alesta-ai' ); ?></span>
+				</div>
+				<div class="alesta-panel-body">
+					<div class="alesta-row">
+						<span class="alesta-row-label">WordPress</span>
+						<span class="alesta-row-value"><span class="alesta-dot <?php echo $wp_ok ? 'ok' : 'warn'; ?>"></span><?php echo esc_html( $wp_version ); ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label">PHP</span>
+						<span class="alesta-row-value"><span class="alesta-dot <?php echo $php_ok ? 'ok' : 'warn'; ?>"></span><?php echo esc_html( $php_version ); ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label">HTTPS</span>
+						<span class="alesta-row-value"><span class="alesta-dot <?php echo $is_https ? 'ok' : 'err'; ?>"></span><?php echo $is_https ? esc_html__( 'Actif', 'alesta-ai' ) : esc_html__( 'Inactif', 'alesta-ai' ); ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label"><?php esc_html_e( 'Mises à jour', 'alesta-ai' ); ?></span>
+						<span class="alesta-row-value"><span class="alesta-dot <?php echo $pending_updates === 0 ? 'ok' : 'warn'; ?>"></span><?php echo (int) $pending_updates; ?></span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Contenu -->
+			<div class="alesta-panel">
+				<div class="alesta-panel-head">
+					<span class="dashicons dashicons-edit" aria-hidden="true"></span>
+					<span class="alesta-panel-label"><?php esc_html_e( 'CONTENU', 'alesta-ai' ); ?></span>
+				</div>
+				<div class="alesta-panel-body">
+					<div class="alesta-row">
+						<span class="alesta-row-label"><?php esc_html_e( 'Articles', 'alesta-ai' ); ?></span>
+						<span class="alesta-row-value"><?php echo (int) $total_posts; ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label"><?php esc_html_e( 'Pages', 'alesta-ai' ); ?></span>
+						<span class="alesta-row-value"><?php echo (int) $total_pages; ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label"><?php esc_html_e( 'Médias', 'alesta-ai' ); ?></span>
+						<span class="alesta-row-value"><?php echo (int) $total_images; ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label"><?php esc_html_e( 'Total publié', 'alesta-ai' ); ?></span>
+						<span class="alesta-row-value"><?php echo (int) $total_content; ?></span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Modules -->
+			<div class="alesta-panel">
+				<div class="alesta-panel-head">
+					<span class="dashicons dashicons-screenoptions" aria-hidden="true"></span>
+					<span class="alesta-panel-label"><?php esc_html_e( 'MODULES', 'alesta-ai' ); ?></span>
+				</div>
+				<div class="alesta-panel-body">
+					<div class="alesta-row">
+						<span class="alesta-row-label"><?php esc_html_e( 'Total chargés', 'alesta-ai' ); ?></span>
+						<span class="alesta-row-value"><?php echo (int) count( $all ); ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label"><?php esc_html_e( 'Free', 'alesta-ai' ); ?></span>
+						<span class="alesta-row-value"><?php echo (int) $free_count; ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label"><?php esc_html_e( 'Pro', 'alesta-ai' ); ?></span>
+						<span class="alesta-row-value"><?php echo (int) $pro_count; ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label"><?php esc_html_e( 'Catégories', 'alesta-ai' ); ?></span>
+						<span class="alesta-row-value"><?php echo (int) count( array_filter( $grouped, fn( $g ) => ! empty( $g ) ) ); ?></span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Visibilité IA -->
+			<div class="alesta-panel">
+				<div class="alesta-panel-head">
+					<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+					<span class="alesta-panel-label"><?php esc_html_e( 'VISIBILITÉ IA', 'alesta-ai' ); ?></span>
+				</div>
+				<div class="alesta-panel-body">
+					<div class="alesta-row">
+						<span class="alesta-row-label">robots.txt</span>
+						<span class="alesta-row-value"><span class="alesta-dot <?php echo $robots_exists ? 'ok' : 'warn'; ?>"></span><?php echo $robots_exists ? esc_html__( 'Présent', 'alesta-ai' ) : esc_html__( 'Absent', 'alesta-ai' ); ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label">llms.txt</span>
+						<span class="alesta-row-value"><span class="alesta-dot <?php echo $llms_exists ? 'ok' : 'warn'; ?>"></span><?php echo $llms_exists ? esc_html__( 'Présent', 'alesta-ai' ) : esc_html__( 'Absent', 'alesta-ai' ); ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label">sitemap.xml</span>
+						<span class="alesta-row-value"><span class="alesta-dot ok"></span><?php esc_html_e( 'Auto', 'alesta-ai' ); ?></span>
+					</div>
+					<div class="alesta-row">
+						<span class="alesta-row-label"><?php esc_html_e( 'IA Pro', 'alesta-ai' ); ?></span>
+						<span class="alesta-row-value"><span class="alesta-dot <?php echo $pro_active ? 'ok' : 'err'; ?>"></span><?php echo $pro_active ? esc_html__( 'Active', 'alesta-ai' ) : esc_html__( 'Non installée', 'alesta-ai' ); ?></span>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ═══════════════════════════════════════════════════════════
+		     CATALOGUE DES MODULES (par catégorie, sections numérotées)
+		══════════════════════════════════════════════════════════════ -->
+		<?php
+		$section_num = 0;
+		foreach ( $cat_meta as $cat_key => $meta ) :
 			$mods = $grouped[ $cat_key ] ?? [];
 			if ( empty( $mods ) ) {
 				continue;
 			}
+			$section_num++;
 			?>
-			<h2 style="margin-top: 24px;">
-				<?php echo esc_html( $cat_label ); ?>
-				<span style="font-weight: 400; color: #646970; font-size: 13px;">(<?php echo (int) count( $mods ); ?>)</span>
-			</h2>
-			<table class="widefat striped" style="max-width: 900px;">
-				<tbody>
-					<?php foreach ( $mods as $slug => $entry ) : ?>
-						<?php
+			<div class="alesta-section-block">
+				<div class="alesta-section-heading">
+					<span class="alesta-section-num"><?php printf( '%02d', $section_num ); ?></span>
+					<span class="alesta-section-title"><?php echo esc_html( $meta['label'] ); ?></span>
+					<span class="alesta-section-desc"><?php echo esc_html( $meta['desc'] ); ?></span>
+				</div>
+				<div class="alesta-cards">
+					<?php foreach ( $mods as $slug => $entry ) :
 						$name       = $entry['meta']['name'] ?? $slug;
 						$desc       = $entry['meta']['description'] ?? '';
 						$short_slug = preg_replace( '#^.+/#', '', $slug );
 						$page_slug  = 'alesta-ai-' . str_replace( '/', '-', $short_slug );
 						$href       = admin_url( 'admin.php?page=' . $page_slug );
 						$is_pro     = ( $entry['source'] ?? 'free' ) === 'pro';
+						$icon       = $entry['meta']['icon_emoji'] ?? $meta['fallback_icon'];
 						?>
-						<tr>
-							<td style="width: 30%;">
-								<strong><a href="<?php echo esc_url( $href ); ?>"><?php echo esc_html( $name ); ?></a></strong>
-								<?php if ( $is_pro ) : ?>
-									<span style="display: inline-block; margin-left: 6px; padding: 1px 8px; background: #f0e7ff; color: #6c2bd9; border: 1px solid #d4b8ff; border-radius: 3px; font-size: 11px; font-weight: 600;">PRO</span>
+						<div class="alesta-module-card alesta-module-active">
+							<span class="amc-status"><?php esc_html_e( '✓ Disponible', 'alesta-ai' ); ?></span>
+							<div class="amc-icon"><?php echo esc_html( $icon ); ?></div>
+							<div class="amc-info">
+								<div class="amc-name">
+									<?php echo esc_html( $name ); ?>
+									<?php if ( $is_pro ) : ?>
+										<span class="amc-badge-pro">PRO</span>
+									<?php endif; ?>
+								</div>
+								<?php if ( $desc ) : ?>
+									<div class="amc-desc"><?php echo esc_html( $desc ); ?></div>
 								<?php endif; ?>
-							</td>
-							<td style="color: #646970;"><?php echo esc_html( $desc ); ?></td>
-						</tr>
+							</div>
+							<div class="amc-footer">
+								<a href="<?php echo esc_url( $href ); ?>" class="button button-primary"><?php esc_html_e( 'Ouvrir', 'alesta-ai' ); ?></a>
+							</div>
+						</div>
 					<?php endforeach; ?>
-				</tbody>
-			</table>
+				</div>
+			</div>
 		<?php endforeach; ?>
 
-		<hr style="margin-top: 32px;" />
-		<p>
+		<!-- Footer -->
+		<p style="margin-top: 24px;">
 			<a href="https://alesta-ai.com/docs" target="_blank" rel="noopener" class="button button-secondary"><?php esc_html_e( 'Documentation', 'alesta-ai' ); ?></a>
 			<?php if ( $pro_active ) : ?>
 				<a href="https://app.galiance.fr/dashboard" target="_blank" rel="noopener" class="button button-primary"><?php esc_html_e( 'Cockpit Galiance', 'alesta-ai' ); ?></a>
