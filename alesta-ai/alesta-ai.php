@@ -3,7 +3,7 @@
  * Plugin Name:       Alesta AI
  * Plugin URI:        https://alesta-ai.com/
  * Description:       WordPress optimization toolkit — SEO, performance, security, GDPR, reviews and analytics. Foundation for the Alesta AI Pro extension.
- * Version:           2.0.11
+ * Version:           2.0.12
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Christian EL DEBS (Alesta Computer)
@@ -47,7 +47,7 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_VERSION', '2.0.11' );
+define( 'ALESTA_AI_VERSION', '2.0.12' );
 define( 'ALESTA_AI_FILE',    __FILE__ );
 define( 'ALESTA_AI_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'ALESTA_AI_URL',     plugin_dir_url( __FILE__ ) );
@@ -222,7 +222,7 @@ add_action( 'admin_menu', function () {
 				echo '<div class="wrap">';
 				echo '<h1>' . esc_html( $name );
 				if ( $is_pro ) {
-					echo ' <span style="display:inline-block;background:#e8890c;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;vertical-align:middle;letter-spacing:.3px;text-transform:uppercase;margin-left:8px;">Pro</span>';
+					echo ' <span style="display:inline-block;background:#1e3a5f;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;vertical-align:middle;letter-spacing:.3px;text-transform:uppercase;margin-left:8px;">Pro</span>';
 				}
 				echo '</h1>';
 				if ( $desc ) {
@@ -267,9 +267,28 @@ add_action( 'admin_menu', function () {
 		$pro_slugs[ 'alesta-ai-' . str_replace( '/', '-', $short_slug ) ] = true;
 	}
 
+	// Mark aussi les modules dont la classe a une vraie méthode register_admin_page
+	// (= modules "Solo" en cours d'implémentation native) vs ceux passés par le
+	// fallback (= modules "Pro" pure stub pour l'instant).
+	$solo_slugs = [];
+	foreach ( $pro_modules as $slug => $entry ) {
+		$instance = $entry['instance'] ?? null;
+		if ( $instance && method_exists( $instance, 'register_admin_page' ) ) {
+			$short_slug = preg_replace( '#^.+/#', '', $slug );
+			$solo_slugs[ 'alesta-ai-' . str_replace( '/', '-', $short_slug ) ] = true;
+		}
+	}
+
 	foreach ( $submenu['alesta-ai'] as $i => $item ) {
 		$page = $item[2] ?? '';
-		if ( isset( $pro_slugs[ $page ] ) ) {
+		if ( ! isset( $pro_slugs[ $page ] ) ) {
+			continue;
+		}
+		// Pill "Solo" pour les modules avec UI propre (implémentés natif),
+		// "Pro" plein pour ceux passés par le fallback (en attente d'implémentation).
+		if ( isset( $solo_slugs[ $page ] ) ) {
+			$submenu['alesta-ai'][ $i ][0] .= ' <span class="alesta-pro-pill">Solo</span>';
+		} else {
 			$submenu['alesta-ai'][ $i ][0] .= ' <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>';
 		}
 	}
@@ -286,7 +305,9 @@ add_action( 'admin_menu', function () {
 add_action( 'admin_head', function () {
 	?>
 	<style>
-		/* Pills "Pro" injectées dans les labels des modules Pro (sidebar) */
+		/* Pills "Solo" (clair contour) / "Pro" (plein) dans les labels sidebar.
+		   Couleur bleu marine #1e3a5f cohérente avec le header gradient du
+		   Master AI Dashboard et l'identité visuelle générale du plugin. */
 		#adminmenu .alesta-pro-pill {
 			display: inline-block;
 			font-size: 9px;
@@ -297,15 +318,15 @@ add_action( 'admin_head', function () {
 			vertical-align: middle;
 			line-height: 1.5;
 			letter-spacing: .3px;
-			background: #fff3e0;
-			color: #7c3d00;
-			border: 1px solid #e8890c;
+			background: #dbeafe;
+			color: #1e3a5f;
+			border: 1px solid #1e3a5f;
 			text-transform: uppercase;
 		}
 		#adminmenu .alesta-pro-pill--pro {
-			background: #e8890c;
+			background: #1e3a5f;
 			color: #fff;
-			border-color: #e8890c;
+			border-color: #1e3a5f;
 		}
 	</style>
 	<?php
@@ -488,12 +509,22 @@ function alesta_ai_render_dashboard_page(): void {
 			}
 			.alesta-wrap .amc-badge-pro {
 				display: inline-block;
-				background: #e8890c;
+				background: #1e3a5f;
 				color: #fff; font-size: 9.5px;
 				padding: 1px 7px; border-radius: 4px;
 				font-weight: 700; letter-spacing: .3px;
 				margin-left: 4px; vertical-align: middle;
-				border: 1px solid #e8890c;
+				border: 1px solid #1e3a5f;
+				text-transform: uppercase;
+			}
+			.alesta-wrap .amc-badge-solo {
+				display: inline-block;
+				background: #dbeafe;
+				color: #1e3a5f; font-size: 9.5px;
+				padding: 1px 7px; border-radius: 4px;
+				font-weight: 700; letter-spacing: .3px;
+				margin-left: 4px; vertical-align: middle;
+				border: 1px solid #1e3a5f;
 				text-transform: uppercase;
 			}
 		</style>
@@ -655,6 +686,12 @@ function alesta_ai_render_dashboard_page(): void {
 						$href       = admin_url( 'admin.php?page=' . $page_slug );
 						$is_pro     = ( $entry['source'] ?? 'free' ) === 'pro';
 						$icon       = $entry['meta']['icon_emoji'] ?? $meta['fallback_icon'];
+						// Distinction Solo / Pro côté Pro Addon : Solo = module implémenté
+						// natif (a une méthode register_admin_page), Pro = stub passé par
+						// le fallback admin_menu (en attente d'implémentation).
+						$instance       = $entry['instance'] ?? null;
+						$is_solo_tier   = $is_pro && $instance && method_exists( $instance, 'register_admin_page' );
+						$is_pro_full    = $is_pro && ! $is_solo_tier;
 						?>
 						<div class="alesta-module-card alesta-module-active">
 							<span class="amc-status"><?php esc_html_e( '✓ Disponible', 'alesta-ai' ); ?></span>
@@ -662,7 +699,9 @@ function alesta_ai_render_dashboard_page(): void {
 							<div class="amc-info">
 								<div class="amc-name">
 									<?php echo esc_html( $name ); ?>
-									<?php if ( $is_pro ) : ?>
+									<?php if ( $is_solo_tier ) : ?>
+										<span class="amc-badge-solo">SOLO</span>
+									<?php elseif ( $is_pro_full ) : ?>
 										<span class="amc-badge-pro">PRO</span>
 									<?php endif; ?>
 								</div>
