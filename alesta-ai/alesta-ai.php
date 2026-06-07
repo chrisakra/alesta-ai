@@ -3,7 +3,7 @@
  * Plugin Name:       Alesta AI
  * Plugin URI:        https://alesta-ai.com/
  * Description:       WordPress optimization toolkit — SEO, performance, security, GDPR, reviews and analytics. Foundation for the Alesta AI Pro extension.
- * Version:           2.0.10
+ * Version:           2.0.11
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Christian EL DEBS (Alesta Computer)
@@ -47,7 +47,7 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_VERSION', '2.0.10' );
+define( 'ALESTA_AI_VERSION', '2.0.11' );
 define( 'ALESTA_AI_FILE',    __FILE__ );
 define( 'ALESTA_AI_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'ALESTA_AI_URL',     plugin_dir_url( __FILE__ ) );
@@ -166,6 +166,78 @@ add_action( 'admin_menu', function () {
 		$submenu['alesta-ai'][0][0] = __( 'Tableau de bord', 'alesta-ai' );
 	}
 }, 5 );
+
+/**
+ * Sub-menu FALLBACK pour chaque module registered qui n'a pas créé son propre
+ * sub-menu (cas v2.0 actuelle : 18 modules Pro mais 16 sont des stubs sans
+ * méthode `register_admin_page`, donc pas de hook admin_menu déclenché).
+ *
+ * Sans ce fallback, la sidebar n'affiche que les modules Free + les 2 Pro
+ * implémentés → ~12 items, alors qu'on attend 27+ (1 par module).
+ *
+ * Priorité 50 : exécuté APRÈS les modules qui ajoutent leur propre menu
+ * (priorité 10 par défaut) et AVANT le patch des labels Pro (priorité 9999).
+ *
+ * Le callback du fallback affiche une page "module en cours d'implémentation"
+ * propre, qui matche l'esprit v1.2.x où chaque module avait son entrée même
+ * en attendant son code complet (page de promo Pro).
+ */
+add_action( 'admin_menu', function () {
+	global $submenu;
+	$registry = \AlestaAI\Core\ModuleRegistry::instance();
+	$all = $registry->all();
+
+	// Index : page-slug -> true pour les modules qui ont DÉJÀ leur sub-menu.
+	$existing_slugs = [];
+	foreach ( $submenu['alesta-ai'] ?? [] as $item ) {
+		$page = $item[2] ?? '';
+		if ( $page ) {
+			$existing_slugs[ $page ] = true;
+		}
+	}
+
+	foreach ( $all as $slug => $entry ) {
+		$short_slug = preg_replace( '#^.+/#', '', $slug );
+		$page_slug  = 'alesta-ai-' . str_replace( '/', '-', $short_slug );
+		if ( isset( $existing_slugs[ $page_slug ] ) ) {
+			continue;
+		}
+
+		$name   = $entry['meta']['name'] ?? $slug;
+		$desc   = $entry['meta']['description'] ?? '';
+		$is_pro = ( $entry['source'] ?? 'free' ) === 'pro';
+
+		// Label menu (HTML autorisé par WP). Le badge Pro est ajouté ici dans
+		// le label original — le hook de patch priorité 9999 le repassera
+		// quand même (idempotent : strpos pour éviter double pill).
+		$label = esc_html( $name );
+
+		add_submenu_page(
+			'alesta-ai',
+			$name,
+			$label,
+			'manage_alesta_ai',
+			$page_slug,
+			function () use ( $name, $desc, $is_pro ) {
+				echo '<div class="wrap">';
+				echo '<h1>' . esc_html( $name );
+				if ( $is_pro ) {
+					echo ' <span style="display:inline-block;background:#e8890c;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;vertical-align:middle;letter-spacing:.3px;text-transform:uppercase;margin-left:8px;">Pro</span>';
+				}
+				echo '</h1>';
+				if ( $desc ) {
+					echo '<p class="description" style="max-width:720px;font-size:13px;">' . esc_html( $desc ) . '</p>';
+				}
+				echo '<div class="notice notice-info inline" style="margin:20px 0;padding:14px 18px;">';
+				echo '<p><strong>' . esc_html__( 'Module en cours d\'implémentation', 'alesta-ai' ) . '</strong></p>';
+				echo '<p>' . esc_html__( "Ce module est enregistré dans Alesta AI mais son interface de configuration n'est pas encore disponible dans cette version. Les hooks publics restent fonctionnels en arrière-plan.", 'alesta-ai' ) . '</p>';
+				echo '<p style="margin-top:10px;"><a href="' . esc_url( admin_url( 'admin.php?page=alesta-ai' ) ) . '" class="button">' . esc_html__( '← Retour au tableau de bord', 'alesta-ai' ) . '</a></p>';
+				echo '</div>';
+				echo '</div>';
+			}
+		);
+	}
+}, 50 );
 
 /**
  * Patch des labels du sous-menu Alesta AI pour injecter les pills "Pro" orange
