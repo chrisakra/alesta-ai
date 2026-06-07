@@ -3,7 +3,7 @@
  * Plugin Name:       Alesta AI
  * Plugin URI:        https://alesta-ai.com/
  * Description:       WordPress optimization toolkit — SEO, performance, security, GDPR, reviews and analytics. Foundation for the Alesta AI Pro extension.
- * Version:           2.0.12
+ * Version:           2.0.13
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Christian EL DEBS (Alesta Computer)
@@ -47,7 +47,22 @@ defined( 'ABSPATH' ) || exit;
 // CONSTANTES
 // =============================================================================
 
-define( 'ALESTA_AI_VERSION', '2.0.12' );
+define( 'ALESTA_AI_VERSION', '2.0.13' );
+
+/**
+ * Icône du menu admin Alesta AI — SVG inline avec lettre grecque φ (phi),
+ * Georgia serif, couleur grise #a0aec0 pour matcher la palette WP admin.
+ * Reprise textuelle de la version originelle v1.2.x (identité visuelle stable).
+ *
+ * Encodé en base64 data-URI pour pouvoir être passé directement à
+ * add_menu_page() sans servir un fichier .svg séparé.
+ */
+function alesta_ai_menu_icon(): string {
+	$svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">'
+		. '<text x="10" y="17" text-anchor="middle" font-family="Georgia,serif" font-size="19" fill="#a0aec0">&#x03C6;</text>'
+		. '</svg>';
+	return 'data:image/svg+xml;base64,' . base64_encode( $svg );
+}
 define( 'ALESTA_AI_FILE',    __FILE__ );
 define( 'ALESTA_AI_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'ALESTA_AI_URL',     plugin_dir_url( __FILE__ ) );
@@ -156,7 +171,7 @@ add_action( 'admin_menu', function () {
 		'manage_alesta_ai',                     // capability custom (mappée à administrator)
 		'alesta-ai',                            // slug parent — référencé par les sous-menus
 		'alesta_ai_render_dashboard_page',      // callback (fonction globale ci-dessous)
-		'dashicons-superhero',                  // icon
+		alesta_ai_menu_icon(),                  // icône SVG φ inline base64 (style v1.2.x)
 		25                                       // position (entre Pages et Commentaires)
 	);
 	// Renomme le 1er sous-menu auto-créé par WP (qui hérite du title parent) en
@@ -166,6 +181,116 @@ add_action( 'admin_menu', function () {
 		$submenu['alesta-ai'][0][0] = __( 'Tableau de bord', 'alesta-ai' );
 	}
 }, 5 );
+
+/**
+ * Sections d'en-tête dans la sidebar : groupe les modules par catégorie via
+ * des `add_submenu_page` spéciaux dont le slug commence par `alesta-ai-section-`.
+ *
+ * Ces entrées sont rendues non-cliquables par CSS (pointer-events: none) et
+ * stylées comme des en-têtes (font 10px, gris #a0aec0, uppercase, padding-top).
+ *
+ * Priorité 60 : exécuté APRÈS le fallback des sous-menus (priorité 50) et
+ * AVANT le patch des labels Pro (priorité 9999). On en profite pour
+ * réordonner $submenu['alesta-ai'] : Tableau de bord, [SEO], items SEO,
+ * [Contenu], items Contenu, etc. (au lieu de l'ordre d'instanciation arbitraire).
+ */
+add_action( 'admin_menu', function () {
+	global $submenu;
+	if ( empty( $submenu['alesta-ai'] ) ) {
+		return;
+	}
+
+	$sections = [
+		'seo'           => 'SEO & Référencement',
+		'content'       => 'Contenu & Rédaction',
+		'performance'   => 'Performance',
+		'security'      => 'Sécurité & GDPR',
+		'media'         => 'Médias & Images',
+		'reports'       => 'Rapports & Audits',
+		'communication' => 'Communication & IA',
+		'settings'      => 'Réglages avancés',
+	];
+
+	$registry = \AlestaAI\Core\ModuleRegistry::instance();
+	$all      = $registry->all();
+
+	// Mapping page-slug → catégorie pour pouvoir regrouper les items.
+	$page_to_cat = [];
+	foreach ( $all as $slug => $entry ) {
+		$cat        = $entry['meta']['category'] ?? 'other';
+		$short_slug = preg_replace( '#^.+/#', '', $slug );
+		$page_slug  = 'alesta-ai-' . str_replace( '/', '-', $short_slug );
+		$page_to_cat[ $page_slug ] = $cat;
+	}
+
+	// Ajoute une entrée d'en-tête pour chaque catégorie qui a au moins 1 module.
+	// Le callback redirige vers le dashboard (sécu — au cas où le pointer-events
+	// CSS serait inactif pour une raison ou une autre).
+	foreach ( $sections as $cat_key => $label ) {
+		$has_module = false;
+		foreach ( $page_to_cat as $pc => $c ) {
+			if ( $c === $cat_key ) { $has_module = true; break; }
+		}
+		if ( ! $has_module ) {
+			continue;
+		}
+		add_submenu_page(
+			'alesta-ai',
+			$label,
+			$label,  // CSS uppercase via text-transform
+			'manage_alesta_ai',
+			'alesta-ai-section-' . $cat_key,
+			function () {
+				wp_safe_redirect( admin_url( 'admin.php?page=alesta-ai' ) );
+				exit;
+			}
+		);
+	}
+
+	// Réorganise $submenu['alesta-ai'] : Tableau de bord, puis chaque section
+	// suivie de ses items, dans l'ordre $sections.
+	$current     = $submenu['alesta-ai'];
+	$tableau_bord = null;
+	$sections_items = [];
+	$other_items    = [];
+
+	foreach ( $current as $item ) {
+		$page = $item[2] ?? '';
+		if ( $page === 'alesta-ai' ) {
+			$tableau_bord = $item;
+		} elseif ( strpos( $page, 'alesta-ai-section-' ) === 0 ) {
+			$cat = substr( $page, strlen( 'alesta-ai-section-' ) );
+			$sections_items[ $cat ]['header'] = $item;
+		} else {
+			$cat = $page_to_cat[ $page ] ?? 'other';
+			$sections_items[ $cat ]['items'][] = $item;
+		}
+	}
+
+	$new = [];
+	if ( $tableau_bord ) {
+		$new[] = $tableau_bord;
+	}
+	foreach ( $sections as $cat_key => $label ) {
+		if ( ! isset( $sections_items[ $cat_key ] ) ) {
+			continue;
+		}
+		if ( isset( $sections_items[ $cat_key ]['header'] ) ) {
+			$new[] = $sections_items[ $cat_key ]['header'];
+		}
+		foreach ( $sections_items[ $cat_key ]['items'] ?? [] as $item ) {
+			$new[] = $item;
+		}
+	}
+	// Items 'other' ou non-catégorisés à la fin
+	if ( isset( $sections_items['other'] ) ) {
+		foreach ( $sections_items['other']['items'] ?? [] as $item ) {
+			$new[] = $item;
+		}
+	}
+
+	$submenu['alesta-ai'] = array_values( $new );
+}, 60 );
 
 /**
  * Sub-menu FALLBACK pour chaque module registered qui n'a pas créé son propre
@@ -305,6 +430,23 @@ add_action( 'admin_menu', function () {
 add_action( 'admin_head', function () {
 	?>
 	<style>
+		/* En-têtes de sections non-cliquables — style v1.2.x originel :
+		   font 10px, gris #a0aec0, uppercase, padding-top, pointer-events none. */
+		#adminmenu .toplevel_page_alesta-ai .wp-submenu a[href*="page=alesta-ai-section-"] {
+			font-size: 10px !important;
+			font-weight: 700 !important;
+			letter-spacing: .05em !important;
+			color: #a0aec0 !important;
+			padding-top: 12px !important;
+			pointer-events: none !important;
+			text-transform: uppercase;
+			cursor: default !important;
+		}
+		#adminmenu .toplevel_page_alesta-ai .wp-submenu a[href*="page=alesta-ai-section-"]:hover {
+			color: #a0aec0 !important;
+			background: transparent !important;
+		}
+
 		/* Pills "Solo" (clair contour) / "Pro" (plein) dans les labels sidebar.
 		   Couleur bleu marine #1e3a5f cohérente avec le header gradient du
 		   Master AI Dashboard et l'identité visuelle générale du plugin. */
