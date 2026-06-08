@@ -44,33 +44,47 @@ class Alesta_AI_Admin {
 
         add_submenu_page('alesta-ai', 'Tableau de bord', 'Tableau de bord', 'manage_options', 'alesta-ai', [$this, 'page_dashboard']);
 
+        // ── Détection de l'addon Pro (pattern Elementor / Yoast).
+        // Si le plugin Alesta AI Pro est actif (constante ALESTA_AI_PRO_VERSION
+        // définie), on N'AFFICHE PAS les sous-menus promo qui montrent une page
+        // "Découvrir Alesta AI Pro" — le Pro enregistre ses VRAIES pages avec
+        // les mêmes slugs et prend le relais (idem au CTA "Passer à Pro" en
+        // bas de menu, devenu inutile).
+        $is_pro = defined('ALESTA_AI_PRO_VERSION');
+
         // 01 SEO — Free
         add_submenu_page('alesta-ai', 'SEO', 'SEO & Referencement', 'manage_options', 'alesta-ai-seo', [$this, 'page_coming_soon']);
         add_submenu_page('alesta-ai', 'Sitemap XML', '- Sitemap XML', 'manage_options', 'alesta-ai-sitemap', function(){ (new Alesta_AI_Admin_Sitemap())->render_page(); });
-        // 01 SEO — Pro features (info only)
-        add_submenu_page('alesta-ai', 'Title Meta', '- Title &amp; Meta + Audit SEO <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-meta', function(){ Alesta_AI_Pro_Promo::render('Title & Meta + Audit SEO', 'Génération en lot des titres et méta-descriptions par Claude, et audit SEO complet avec score.', '📝'); });
-        add_submenu_page('alesta-ai', 'FAQ Schema', '- FAQ Schema <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-faq', function(){ Alesta_AI_Pro_Promo::render('FAQ Schema JSON-LD', 'Génération automatique des données structurées FAQ pour les rich snippets Google.', '❓'); });
-        add_submenu_page('alesta-ai', 'Mots cles', '- Mots-cles <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-keywords', function(){ Alesta_AI_Pro_Promo::render('Analyse de mots-clés', 'Densité, synonymes LSI et recherche de mots-clés assistée par Claude.', '🔑'); });
-        add_submenu_page('alesta-ai', 'LLMs.txt', '- LLMs.txt pour IA <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-llms', function(){ Alesta_AI_Pro_Promo::render('Générateur LLMs.txt', 'Améliorez la visibilité sur les moteurs IA : ChatGPT, Claude, Gemini et autres.', '🤖'); });
-        add_submenu_page('alesta-ai', 'AI Metadata', '- AI Metadata Generator <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-ai-metadata', function(){ Alesta_AI_Pro_Promo::render('Générateur de métadonnées IA', 'Balises meta optimisées pour les crawlers IA.', '🧠'); });
-        add_submenu_page('alesta-ai', 'Contenu duplique', '- Detecteur contenu duplique <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-duplicates', function(){ Alesta_AI_Pro_Promo::render('Détecteur de contenu dupliqué', 'Détection et alertes sur les contenus similaires de votre site.', '📋'); });
-        add_submenu_page('alesta-ai', 'Reglages SEO', '- Reglages SEO natif <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-seo-settings', function(){ Alesta_AI_Pro_Promo::render('Réglages SEO natifs', 'Configuration avancée du moteur SEO intégré.', '⚙️'); });
-        add_submenu_page('alesta-ai', 'Schema', '- Donnees structurees <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-schema', function(){ Alesta_AI_Pro_Promo::render('Données structurées', 'Article, Product, Organization, LocalBusiness… Claude détecte automatiquement le bon type par page.', '🏷️'); });
+        // 01 SEO — Pro features (info only) — masqué si Pro actif
+        if ( ! $is_pro ) {
+            add_submenu_page('alesta-ai', 'Title Meta', '- Title &amp; Meta + Audit SEO <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-meta', function(){ Alesta_AI_Pro_Promo::render('Title & Meta + Audit SEO', 'Génération en lot des titres et méta-descriptions par Claude, et audit SEO complet avec score.', '📝'); });
+            add_submenu_page('alesta-ai', 'FAQ Schema', '- FAQ Schema <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-faq', function(){ Alesta_AI_Pro_Promo::render('FAQ Schema JSON-LD', 'Génération automatique des données structurées FAQ pour les rich snippets Google.', '❓'); });
+            add_submenu_page('alesta-ai', 'Mots cles', '- Mots-cles <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-keywords', function(){ Alesta_AI_Pro_Promo::render('Analyse de mots-clés', 'Densité, synonymes LSI et recherche de mots-clés assistée par Claude.', '🔑'); });
+            add_submenu_page('alesta-ai', 'LLMs.txt', '- LLMs.txt pour IA <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-llms', function(){ Alesta_AI_Pro_Promo::render('Générateur LLMs.txt', 'Améliorez la visibilité sur les moteurs IA : ChatGPT, Claude, Gemini et autres.', '🤖'); });
+            add_submenu_page('alesta-ai', 'AI Metadata', '- AI Metadata Generator <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-ai-metadata', function(){ Alesta_AI_Pro_Promo::render('Générateur de métadonnées IA', 'Balises meta optimisées pour les crawlers IA.', '🧠'); });
+            add_submenu_page('alesta-ai', 'Contenu duplique', '- Detecteur contenu duplique <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-duplicates', function(){ Alesta_AI_Pro_Promo::render('Détecteur de contenu dupliqué', 'Détection et alertes sur les contenus similaires de votre site.', '📋'); });
+            add_submenu_page('alesta-ai', 'Reglages SEO', '- Reglages SEO natif <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-seo-settings', function(){ Alesta_AI_Pro_Promo::render('Réglages SEO natifs', 'Configuration avancée du moteur SEO intégré.', '⚙️'); });
+            add_submenu_page('alesta-ai', 'Schema', '- Donnees structurees <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-schema', function(){ Alesta_AI_Pro_Promo::render('Données structurées', 'Article, Product, Organization, LocalBusiness… Claude détecte automatiquement le bon type par page.', '🏷️'); });
+        }
 
         // 02 Content — Free header
         add_submenu_page('alesta-ai', 'Contenu', 'Contenu & Redaction', 'manage_options', 'alesta-ai-content', [$this, 'page_coming_soon']);
-        // 02 Content — Pro features (info only)
-        add_submenu_page('alesta-ai', 'Amelioration', '- Amelioration texte <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-improve', function(){ Alesta_AI_Pro_Promo::render('Amélioration de texte', 'Reformuler, simplifier ou enrichir vos contenus existants avec Claude.', '✨'); });
-        add_submenu_page('alesta-ai', 'Editorial', '- Plan editorial <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-editorial', function(){ Alesta_AI_Pro_Promo::render('Plan éditorial', 'Calendrier d\'articles généré sur 1 à 3 mois.', '📅'); });
-        add_submenu_page('alesta-ai', 'Resumes', '- Resumes auto <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-summaries', function(){ Alesta_AI_Pro_Promo::render('Résumés automatiques', 'Extraits de 2-3 phrases pour tous vos articles et pages.', '📄'); });
-        add_submenu_page('alesta-ai', 'Commentaires', '- Commentaires <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-comments', function(){ Alesta_AI_Pro_Promo::render('Modération IA des commentaires', 'Classification automatique par Claude : spam, toxique, légitime.', '💬'); });
-        add_submenu_page('alesta-ai', 'Tags', '- Tags auto <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-tags', function(){ Alesta_AI_Pro_Promo::render('Tags automatiques', 'Catégories et étiquettes appliquées automatiquement par Claude.', '🏷️'); });
+        // 02 Content — Pro features (info only) — masqué si Pro actif
+        if ( ! $is_pro ) {
+            add_submenu_page('alesta-ai', 'Amelioration', '- Amelioration texte <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-improve', function(){ Alesta_AI_Pro_Promo::render('Amélioration de texte', 'Reformuler, simplifier ou enrichir vos contenus existants avec Claude.', '✨'); });
+            add_submenu_page('alesta-ai', 'Editorial', '- Plan editorial <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-editorial', function(){ Alesta_AI_Pro_Promo::render('Plan éditorial', 'Calendrier d\'articles généré sur 1 à 3 mois.', '📅'); });
+            add_submenu_page('alesta-ai', 'Resumes', '- Resumes auto <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-summaries', function(){ Alesta_AI_Pro_Promo::render('Résumés automatiques', 'Extraits de 2-3 phrases pour tous vos articles et pages.', '📄'); });
+            add_submenu_page('alesta-ai', 'Commentaires', '- Commentaires <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-comments', function(){ Alesta_AI_Pro_Promo::render('Modération IA des commentaires', 'Classification automatique par Claude : spam, toxique, légitime.', '💬'); });
+            add_submenu_page('alesta-ai', 'Tags', '- Tags auto <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-tags', function(){ Alesta_AI_Pro_Promo::render('Tags automatiques', 'Catégories et étiquettes appliquées automatiquement par Claude.', '🏷️'); });
+        }
 
         // 03 Media — Pro features (info only)
         add_submenu_page('alesta-ai', 'Medias', 'Medias & Images', 'manage_options', 'alesta-ai-media', [$this, 'page_coming_soon']);
-        add_submenu_page('alesta-ai', 'Images', '- Traitement images <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-images', function(){ Alesta_AI_Pro_Promo::render('Traitement IA des images', 'Texte alternatif, titre, légende et description générés par Claude.', '🖼️'); });
-        add_submenu_page('alesta-ai', 'Fichiers', '- Nommage fichiers <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-filenames', function(){ Alesta_AI_Pro_Promo::render('Nommage SEO des fichiers', 'Audit SEO et renommage des fichiers images.', '💾'); });
-        add_submenu_page('alesta-ai', 'WebP', '- Conversion WebP <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-webp', function(){ Alesta_AI_Pro_Promo::render('Conversion WebP', 'Optimisation automatique des images au format WebP.', '⚡'); });
+        if ( ! $is_pro ) {
+            add_submenu_page('alesta-ai', 'Images', '- Traitement images <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-images', function(){ Alesta_AI_Pro_Promo::render('Traitement IA des images', 'Texte alternatif, titre, légende et description générés par Claude.', '🖼️'); });
+            add_submenu_page('alesta-ai', 'Fichiers', '- Nommage fichiers <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-filenames', function(){ Alesta_AI_Pro_Promo::render('Nommage SEO des fichiers', 'Audit SEO et renommage des fichiers images.', '💾'); });
+            add_submenu_page('alesta-ai', 'WebP', '- Conversion WebP <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-webp', function(){ Alesta_AI_Pro_Promo::render('Conversion WebP', 'Optimisation automatique des images au format WebP.', '⚡'); });
+        }
 
         // 04 Performance — Free
         add_submenu_page('alesta-ai', 'Performance', 'Performance & Optimisation', 'manage_options', 'alesta-ai-perf', [$this, 'page_coming_soon']);
@@ -80,60 +94,75 @@ class Alesta_AI_Admin {
         add_submenu_page('alesta-ai', 'Nettoyeur BDD', '- Nettoyeur BDD planifie', 'manage_options', 'alesta-ai-db-cleaner', function(){ (new Alesta_AI_Admin_DB_Cleaner())->render_page(); });
         add_submenu_page('alesta-ai', 'Google Fonts RGPD', '- Optimiseur Google Fonts RGPD', 'manage_options', 'alesta-ai-fonts', function(){ (new Alesta_AI_Admin_Fonts())->render_page(); });
         add_submenu_page('alesta-ai', 'Maintenance', '- Mode Maintenance', 'manage_options', 'alesta-ai-maintenance', function(){ (new Alesta_AI_Admin_Maintenance())->render_page(); });
-        // 04 Performance — Pro features (info only)
-        add_submenu_page('alesta-ai', 'Web Vitals', '- Core Web Vitals <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-cwv', function(){ Alesta_AI_Pro_Promo::render('Moniteur Core Web Vitals', 'LCP, CLS et INP en temps réel via l\'API PageSpeed Insights.', '📊'); });
-        add_submenu_page('alesta-ai', 'Audit Perf', '- Audit et recommandations <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-perf-audit', function(){ Alesta_AI_Pro_Promo::render('Audit de performance', 'Analyse approfondie avec recommandations Claude.', '🔍'); });
-        add_submenu_page('alesta-ai', 'Scripts bloquants', '- Detecteur scripts bloquants <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-scripts', function(){ Alesta_AI_Pro_Promo::render('Détecteur de scripts bloquants', 'Identification et conseils defer/async.', '🔁'); });
-        add_submenu_page('alesta-ai', 'Redirections 404', '- Redirections 404 auto <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-redirects', function(){ Alesta_AI_Pro_Promo::render('Redirections 404 intelligentes', 'Détection et suggestions IA pour les pages introuvables.', '🔄'); });
+        // 04 Performance — Pro features (info only) — masqué si Pro actif
+        if ( ! $is_pro ) {
+            add_submenu_page('alesta-ai', 'Web Vitals', '- Core Web Vitals <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-cwv', function(){ Alesta_AI_Pro_Promo::render('Moniteur Core Web Vitals', 'LCP, CLS et INP en temps réel via l\'API PageSpeed Insights.', '📊'); });
+            add_submenu_page('alesta-ai', 'Audit Perf', '- Audit et recommandations <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-perf-audit', function(){ Alesta_AI_Pro_Promo::render('Audit de performance', 'Analyse approfondie avec recommandations Claude.', '🔍'); });
+            add_submenu_page('alesta-ai', 'Scripts bloquants', '- Detecteur scripts bloquants <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-scripts', function(){ Alesta_AI_Pro_Promo::render('Détecteur de scripts bloquants', 'Identification et conseils defer/async.', '🔁'); });
+            add_submenu_page('alesta-ai', 'Redirections 404', '- Redirections 404 auto <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-redirects', function(){ Alesta_AI_Pro_Promo::render('Redirections 404 intelligentes', 'Détection et suggestions IA pour les pages introuvables.', '🔄'); });
+        }
 
         // 05 AI — Pro features (info only) — Chatbot déplacé vers "Communication"
         add_submenu_page('alesta-ai', 'IA', 'IA & Automatisation', 'manage_options', 'alesta-ai-automation', [$this, 'page_coming_soon']);
-        add_submenu_page('alesta-ai', 'Traduction', '- Traduction IA <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-translate', function(){ Alesta_AI_Pro_Promo::render('Traduction IA', '20 langues prises en charge via Claude Opus.', '🌐'); });
+        if ( ! $is_pro ) {
+            add_submenu_page('alesta-ai', 'Traduction', '- Traduction IA <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-translate', function(){ Alesta_AI_Pro_Promo::render('Traduction IA', '20 langues prises en charge via Claude Opus.', '🌐'); });
+        }
 
         // 06 Security — Free
         add_submenu_page('alesta-ai', 'Sécurité', 'Sécurité & Conformité', 'manage_options', 'alesta-ai-security-section', [$this, 'page_coming_soon']);
         add_submenu_page('alesta-ai', 'Health Check', '- Health Check Dashboard', 'manage_options', 'alesta-ai-health', function(){ (new Alesta_AI_Admin_Health())->render_page(); });
         add_submenu_page('alesta-ai', 'Bannière RGPD', '- Bannière RGPD souveraine', 'manage_options', 'alesta-ai-rgpd', function(){ (new Alesta_AI_Admin_RGPD())->render_page(); });
-        // 06 Security — Pro features (info only)
-        add_submenu_page('alesta-ai', 'Audit Sécurité', '- Audit sécurité passif <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-security-audit', function(){ Alesta_AI_Pro_Promo::render('Audit de sécurité passif', 'Fichiers exposés, tentatives de connexion, permissions.', '🛡️'); });
-        add_submenu_page('alesta-ai', 'Activité admin', '- Journal activité admin <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-activity', function(){ Alesta_AI_Pro_Promo::render('Journal d\'activité admin', 'Historique complet des actions administrateur.', '📖'); });
-        add_submenu_page('alesta-ai', 'Mises à jour', '- Mises à jour planifiées <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-updates', function(){ Alesta_AI_Pro_Promo::render('Mises à jour planifiées', 'Plugins, thèmes et cœur WordPress via WP Cron.', '📦'); });
+        // 06 Security — Pro features (info only) — masqué si Pro actif
+        if ( ! $is_pro ) {
+            add_submenu_page('alesta-ai', 'Audit Sécurité', '- Audit sécurité passif <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-security-audit', function(){ Alesta_AI_Pro_Promo::render('Audit de sécurité passif', 'Fichiers exposés, tentatives de connexion, permissions.', '🛡️'); });
+            add_submenu_page('alesta-ai', 'Activité admin', '- Journal activité admin <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-activity', function(){ Alesta_AI_Pro_Promo::render('Journal d\'activité admin', 'Historique complet des actions administrateur.', '📖'); });
+            add_submenu_page('alesta-ai', 'Mises à jour', '- Mises à jour planifiées <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-updates', function(){ Alesta_AI_Pro_Promo::render('Mises à jour planifiées', 'Plugins, thèmes et cœur WordPress via WP Cron.', '📦'); });
+        }
 
-        // 07 Reports — Pro features (info only)
+        // 07 Reports — Pro features (info only) — masqué si Pro actif
         add_submenu_page('alesta-ai', 'Rapports', 'Rapports', 'manage_options', 'alesta-ai-reports', [$this, 'page_coming_soon']);
-        add_submenu_page('alesta-ai', 'Dashboard SEO', '- Dashboard SEO <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-dashboard-seo', function(){ Alesta_AI_Pro_Promo::render('Tableau de bord SEO global', 'Score SEO de toutes vos pages en un coup d\'œil.', '📈'); });
-        add_submenu_page('alesta-ai', 'Rapport PDF', '- Rapport PDF <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-pdf', function(){ Alesta_AI_Pro_Promo::render('Rapport PDF mensuel', 'Synthèse automatique générée par Claude.', '📑'); });
-        add_submenu_page('alesta-ai', 'Alertes', '- Alertes automatiques <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-alerts', function(){ Alesta_AI_Pro_Promo::render('Alertes automatiques', '7 types de surveillance envoyés par e-mail.', '🔔'); });
+        if ( ! $is_pro ) {
+            add_submenu_page('alesta-ai', 'Dashboard SEO', '- Dashboard SEO <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-dashboard-seo', function(){ Alesta_AI_Pro_Promo::render('Tableau de bord SEO global', 'Score SEO de toutes vos pages en un coup d\'œil.', '📈'); });
+            add_submenu_page('alesta-ai', 'Rapport PDF', '- Rapport PDF <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-pdf', function(){ Alesta_AI_Pro_Promo::render('Rapport PDF mensuel', 'Synthèse automatique générée par Claude.', '📑'); });
+            add_submenu_page('alesta-ai', 'Alertes', '- Alertes automatiques <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-alerts', function(){ Alesta_AI_Pro_Promo::render('Alertes automatiques', '7 types de surveillance envoyés par e-mail.', '🔔'); });
+        }
 
-        // 08 Avis & Réputation — Pro features (info only)
+        // 08 Avis & Réputation — Pro features (info only) — masqué si Pro actif
         add_submenu_page('alesta-ai', 'Avis', 'Avis', 'manage_options', 'alesta-ai-reviews-section', [$this, 'page_coming_soon']);
-        add_submenu_page('alesta-ai', 'Avis Google', '- Google <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-reviews', function(){ Alesta_AI_Pro_Promo::render('Avis Google', 'Récupération automatique de vos avis Google et affichage via shortcode (carousel, grille, liste, masonry).', '⭐'); });
-        add_submenu_page('alesta-ai', 'Avis Trustpilot', '- Trustpilot <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-reviews-trustpilot', function(){ Alesta_AI_Pro_Promo::render('Avis Trustpilot', 'Récupération automatique de vos avis Trustpilot — bientôt disponible.', '📝'); });
+        if ( ! $is_pro ) {
+            add_submenu_page('alesta-ai', 'Avis Google', '- Google <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-reviews', function(){ Alesta_AI_Pro_Promo::render('Avis Google', 'Récupération automatique de vos avis Google et affichage via shortcode (carousel, grille, liste, masonry).', '⭐'); });
+            add_submenu_page('alesta-ai', 'Avis Trustpilot', '- Trustpilot <span class="alesta-pro-pill">Solo</span>', 'manage_options', 'alesta-ai-reviews-trustpilot', function(){ Alesta_AI_Pro_Promo::render('Avis Trustpilot', 'Récupération automatique de vos avis Trustpilot — bientôt disponible.', '📝'); });
+        }
 
         // 09 Communication — Talk to Me (Free, fonctionnel) + Chatbot (Pro promo)
         add_submenu_page('alesta-ai', 'Communication', 'Communication', 'manage_options', 'alesta-ai-communication-section', [$this, 'page_coming_soon']);
         add_submenu_page('alesta-ai', 'Talk to Me', '- Talk to Me', 'manage_options', 'alesta-ai-talk-to-me', function(){ (new Alesta_AI_Admin_TalkToMe())->render_page(); });
-        add_submenu_page('alesta-ai', 'Chatbot', '- Chatbot IA <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-chatbot', function(){ Alesta_AI_Pro_Promo::render('Chatbot IA visiteurs', 'Widget front-end propulsé par Claude Haiku.', '💬'); });
+        if ( ! $is_pro ) {
+            add_submenu_page('alesta-ai', 'Chatbot', '- Chatbot IA <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-chatbot', function(){ Alesta_AI_Pro_Promo::render('Chatbot IA visiteurs', 'Widget front-end propulsé par Claude Haiku.', '💬'); });
+        }
 
         // 10 Settings — Free
         add_submenu_page('alesta-ai', 'Reglages', 'Reglages', 'manage_options', 'alesta-ai-settings-section', [$this, 'page_coming_soon']);
         add_submenu_page('alesta-ai', 'Debug Manager', '- Debug Manager', 'manage_options', 'alesta-ai-debug', function(){ (new Alesta_AI_Admin_Debug())->render_page(); });
         add_submenu_page('alesta-ai', 'Configuration', '- Configuration', 'manage_options', 'alesta-ai-settings', [$this, 'page_settings']);
         add_submenu_page('alesta-ai', 'Budget', '- Budget API', 'manage_options', 'alesta-ai-budget', function(){ (new Alesta_AI_Admin_Budget())->render_page(); });
-        // 10 Settings — Pro features (info only)
-        add_submenu_page('alesta-ai', 'Roles', '- Roles et acces <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-roles', function(){ Alesta_AI_Pro_Promo::render('Rôles & Accès', 'Matrice de droits par rôle WordPress sur chaque module.', '👥'); });
+        // 10 Settings — Pro features (info only) — masqué si Pro actif
+        if ( ! $is_pro ) {
+            add_submenu_page('alesta-ai', 'Roles', '- Roles et acces <span class="alesta-pro-pill alesta-pro-pill--pro">Pro</span>', 'manage_options', 'alesta-ai-roles', function(){ Alesta_AI_Pro_Promo::render('Rôles & Accès', 'Matrice de droits par rôle WordPress sur chaque module.', '👥'); });
 
-        // ── Bottom CTA — "Passer à Pro" ──────────────────────────────────────
-        // The slug is set to the external pricing URL so WordPress renders it
-        // as a direct link in the sidebar (no callback is invoked).
-        add_submenu_page(
-            'alesta-ai',
-            'Passer à Pro',
-            '<span class="alesta-menu-upgrade">&#9889; Passer à Pro</span>',
-            'manage_options',
-            'https://www.alesta-ai.com/tarifs.html',
-            null
-        );
+            // ── Bottom CTA — "Passer à Pro" — UNIQUEMENT si Pro pas actif ─────
+            // Le slug = URL externe pricing → WP rend ça comme un lien direct
+            // dans la sidebar (pas de callback invoqué). Devient inutile quand
+            // le Pro est déjà installé (l'user est déjà client).
+            add_submenu_page(
+                'alesta-ai',
+                'Passer à Pro',
+                '<span class="alesta-menu-upgrade">&#9889; Passer à Pro</span>',
+                'manage_options',
+                'https://www.alesta-ai.com/tarifs.html',
+                null
+            );
+        }
     }
 
     // -------------------------------------------------------------------------
